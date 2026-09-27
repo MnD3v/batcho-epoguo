@@ -6,6 +6,7 @@ import '../hydration_controller.dart';
 import '../models/plan.dart';
 import '../services/auth_service.dart';
 import '../theme/duo.dart';
+import '../widgets/account_prompt.dart';
 import '../widgets/duo_widgets.dart';
 import 'onboarding_screen.dart';
 import 'path_screen.dart' show pickCity;
@@ -33,7 +34,7 @@ class SettingsScreen extends StatelessWidget {
           _RenameSheet(initial: controller.profile?.firstName ?? ''),
     );
     if (name == null) return;
-    await auth.updateFirstName(name);
+    if (auth.user.value != null) await auth.updateFirstName(name);
     await controller.renameTo(name);
   }
 
@@ -70,6 +71,7 @@ class SettingsScreen extends StatelessWidget {
           listenable: controller,
           builder: (context, _) {
             final profile = controller.profile;
+            final signedIn = auth.user.value != null;
             final plan = controller.plan;
             return ListView(
               padding: const EdgeInsets.fromLTRB(8, 8, 16, 32),
@@ -106,18 +108,22 @@ class SettingsScreen extends StatelessWidget {
                               value: profile?.firstName ?? '',
                               onTap: () => _rename(context),
                             ),
-                            const Divider(height: 2, thickness: 2),
-                            _Row(
-                              icon: Icons.mail_rounded,
-                              label: 'E-mail',
-                              value: profile?.email ??
-                                  auth.user.value?.email ??
-                                  '',
-                            ),
+                            if (signedIn) ...[
+                              const Divider(height: 2, thickness: 2),
+                              _Row(
+                                icon: Icons.mail_rounded,
+                                label: 'E-mail',
+                                value: auth.user.value?.email ?? '',
+                              ),
+                            ],
                           ],
                         ),
                       ),
-                      if (auth.isDemo) ...[
+                      if (!signedIn) ...[
+                        const SizedBox(height: 12),
+                        AccountCta(auth: auth, controller: controller),
+                      ],
+                      if (auth.isDemo && signedIn) ...[
                         const SizedBox(height: 8),
                         Text(
                           'Mode démo : ce compte reste sur ce téléphone.',
@@ -197,23 +203,25 @@ class SettingsScreen extends StatelessWidget {
                                 );
                               },
                       ),
-                      const SizedBox(height: 32),
-                      DuoButton.outline(
-                        label: 'Se déconnecter',
-                        icon: Icons.logout_rounded,
-                        textColor: Duo.text,
-                        onPressed: () => _signOut(context),
-                      ),
-                      const SizedBox(height: 8),
-                      Center(
-                        child: TextButton(
-                          onPressed: () => _delete(context),
-                          child: Text(
-                            'SUPPRIMER MON COMPTE',
-                            style: Duo.label.copyWith(color: Duo.red),
+                      if (signedIn) ...[
+                        const SizedBox(height: 32),
+                        DuoButton.outline(
+                          label: 'Se déconnecter',
+                          icon: Icons.logout_rounded,
+                          textColor: Duo.text,
+                          onPressed: () => _signOut(context),
+                        ),
+                        const SizedBox(height: 8),
+                        Center(
+                          child: TextButton(
+                            onPressed: () => _delete(context),
+                            child: Text(
+                              'SUPPRIMER MON COMPTE',
+                              style: Duo.label.copyWith(color: Duo.red),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                       const SizedBox(height: 16),
                       const Text(
                         healthDisclaimer,

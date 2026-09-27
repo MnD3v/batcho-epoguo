@@ -8,14 +8,17 @@ import '../hydration_controller.dart';
 import '../models/city.dart';
 import '../models/plan.dart';
 import '../theme/duo.dart';
+import '../services/auth_service.dart';
+import '../widgets/account_prompt.dart';
 import '../widgets/duo_widgets.dart';
 import '../widgets/reward_feedback.dart';
 
 /// Le parcours du jour : les 7 rappels en zigzag, à cocher un par un.
 class PathScreen extends StatefulWidget {
-  const PathScreen({super.key, required this.controller});
+  const PathScreen({super.key, required this.controller, required this.auth});
 
   final HydrationController controller;
+  final AuthService auth;
 
   @override
   State<PathScreen> createState() => _PathScreenState();
@@ -75,6 +78,8 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
         if (!mounted) return;
         final tip = kidneyTips[tipIndexFor(_c.now().weekday, index)];
         await showReward(context, reward, message: tip.short);
+        // Sans compte : proposé une fois, juste après la première gorgée.
+        if (mounted) await maybePromptAccount(context, widget.auth, _c);
     }
   }
 

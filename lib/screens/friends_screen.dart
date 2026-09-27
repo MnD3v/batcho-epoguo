@@ -4,7 +4,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../models/game.dart';
 import '../models/plan.dart';
 import '../services/social_repository.dart';
+import '../services/auth_service.dart';
 import '../social_controller.dart';
+import '../widgets/account_prompt.dart';
 import '../theme/duo.dart';
 import '../widgets/duo_widgets.dart';
 import '../widgets/reward_feedback.dart';
@@ -12,9 +14,10 @@ import '../widgets/share_card.dart';
 
 /// Défis de la semaine entre amis et parrainage.
 class FriendsScreen extends StatefulWidget {
-  const FriendsScreen({super.key, required this.social});
+  const FriendsScreen({super.key, required this.social, required this.auth});
 
   final SocialController social;
+  final AuthService auth;
 
   @override
   State<FriendsScreen> createState() => _FriendsScreenState();
@@ -75,79 +78,16 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   size: 90,
                   text: 'Défie tes amis : qui boit le plus cette semaine ?',
                 ),
-                if (_s.error != null) ...[
-                  const SizedBox(height: 12),
-                  ErrorBanner(_s.error!),
-                ],
-                const SizedBox(height: 16),
-                for (final challenge in _s.challenges) ...[
-                  _ChallengeCard(
-                    challenge: challenge,
-                    week: week,
-                    myUid: _s.me.uid,
-                    onInvite: () => shareInvite(
-                      challengeCode: challenge.code,
-                      inviteCode: _s.referralCode,
-                    ),
-                    onLeave: () => _s.leave(challenge.code),
+                if (!_s.signedIn) ...[
+                  const SizedBox(height: 16),
+                  AccountCta(
+                    auth: widget.auth,
+                    controller: _s.hydration,
+                    text: 'Crée ton compte pour défier tes amis et gagner '
+                        '+$referralBonusXp XP avec ton code d\'invitation.',
                   ),
-                  const SizedBox(height: 12),
-                ],
-                if (_s.challenges.isEmpty && !_s.loading)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(
-                      'Aucun défi pour l\'instant. Crée le tien ou rejoins '
-                      'celui d\'un ami !',
-                      style: Duo.body.copyWith(fontSize: 15),
-                    ),
-                  ),
-                DuoButton(
-                  label: 'Créer un défi',
-                  color: Duo.blue,
-                  shadow: Duo.blueDark,
-                  onPressed: () => _askCode(
-                    title: 'Nouveau défi',
-                    label: 'Nom du défi (ex. Famille)',
-                    action: 'Créer',
-                    code: false,
-                    run: _s.create,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                DuoButton.outline(
-                  label: 'Rejoindre avec un code',
-                  onPressed: () => _askCode(
-                    title: 'Rejoindre un défi',
-                    label: 'Code du défi',
-                    action: 'Rejoindre',
-                    run: _s.join,
-                  ),
-                ),
-                const SizedBox(height: 28),
-                const Text('INVITER DES AMIS', style: Duo.label),
-                const SizedBox(height: 10),
-                _ReferralCard(
-                  code: _s.referralCode,
-                  onShare: () => shareInvite(inviteCode: _s.referralCode),
-                ),
-                if (!_s.alreadyReferred) ...[
-                  const SizedBox(height: 8),
-                  Center(
-                    child: TextButton(
-                      onPressed: () => _askCode(
-                        title: 'Un ami t\'a invité ?',
-                        label: 'Son code d\'invitation',
-                        action: 'Valider (+$referralBonusXp XP)',
-                        run: _s.redeem,
-                      ),
-                      child: Text(
-                        'J\'AI UN CODE D\'INVITATION',
-                        style: Duo.label.copyWith(color: Duo.blue),
-                      ),
-                    ),
-                  ),
-                ],
+                ] else
+                  ..._friendsContent(week),
               ],
             ),
           ),
@@ -155,6 +95,82 @@ class _FriendsScreenState extends State<FriendsScreen> {
       },
     );
   }
+
+  List<Widget> _friendsContent(String week) => [
+        if (_s.error != null) ...[
+          const SizedBox(height: 12),
+          ErrorBanner(_s.error!),
+        ],
+        const SizedBox(height: 16),
+        for (final challenge in _s.challenges) ...[
+          _ChallengeCard(
+            challenge: challenge,
+            week: week,
+            myUid: _s.me.uid,
+            onInvite: () => shareInvite(
+              challengeCode: challenge.code,
+              inviteCode: _s.referralCode,
+            ),
+            onLeave: () => _s.leave(challenge.code),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (_s.challenges.isEmpty && !_s.loading)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              'Aucun défi pour l\'instant. Crée le tien ou rejoins '
+              'celui d\'un ami !',
+              style: Duo.body.copyWith(fontSize: 15),
+            ),
+          ),
+        DuoButton(
+          label: 'Créer un défi',
+          color: Duo.blue,
+          shadow: Duo.blueDark,
+          onPressed: () => _askCode(
+            title: 'Nouveau défi',
+            label: 'Nom du défi (ex. Famille)',
+            action: 'Créer',
+            code: false,
+            run: _s.create,
+          ),
+        ),
+        const SizedBox(height: 10),
+        DuoButton.outline(
+          label: 'Rejoindre avec un code',
+          onPressed: () => _askCode(
+            title: 'Rejoindre un défi',
+            label: 'Code du défi',
+            action: 'Rejoindre',
+            run: _s.join,
+          ),
+        ),
+        const SizedBox(height: 28),
+        const Text('INVITER DES AMIS', style: Duo.label),
+        const SizedBox(height: 10),
+        _ReferralCard(
+          code: _s.referralCode,
+          onShare: () => shareInvite(inviteCode: _s.referralCode),
+        ),
+        if (!_s.alreadyReferred) ...[
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton(
+              onPressed: () => _askCode(
+                title: 'Un ami t\'a invité ?',
+                label: 'Son code d\'invitation',
+                action: 'Valider (+$referralBonusXp XP)',
+                run: _s.redeem,
+              ),
+              child: Text(
+                'J\'AI UN CODE D\'INVITATION',
+                style: Duo.label.copyWith(color: Duo.blue),
+              ),
+            ),
+          ),
+        ],
+      ];
 }
 
 class _ChallengeCard extends StatelessWidget {

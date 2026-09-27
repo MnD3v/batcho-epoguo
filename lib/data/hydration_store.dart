@@ -172,6 +172,16 @@ class HydrationStore {
   Future<void> cacheMax(DateTime day, String cityName, double max) =>
       _prefs.setString(_weatherKey, '${_dayKey(day)}|$cityName|$max');
 
+  // --- Sans compte ---
+
+  static const _accountPromptKey = 'guest_account_prompt';
+
+  /// « Crée ton compte » déjà proposé après la première gorgée.
+  bool get accountPromptShown => _prefs.getBool(_accountPromptKey) ?? false;
+
+  Future<void> markAccountPromptShown() =>
+      _prefs.setBool(_accountPromptKey, true);
+
   /// Relit les valeurs écrites par un autre isolate (notification, widget).
   Future<void> reload() => _prefs.reload();
 
@@ -213,6 +223,7 @@ class HydrationStore {
       await _prefs.remove(key);
     }
     await _prefs.remove(_ownerKey);
+    await _prefs.remove(_accountPromptKey);
   }
 
   /// Premier jour d'utilisation : les courbes ne montrent rien avant.

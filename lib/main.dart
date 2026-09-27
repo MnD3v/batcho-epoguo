@@ -60,7 +60,7 @@ Future<void> main() async {
     debugPrint('Widget indisponible : $e');
   }
   // Reprogramme à chaque lancement : utile si le fuseau horaire a changé.
-  if (auth.user.value != null) {
+  if (controller.isSetUp) {
     await controller.protectStreak();
     controller.rescheduleAlerts();
     controller.refreshWeather();

@@ -9,8 +9,9 @@ import 'services/auth_service.dart';
 import 'social_controller.dart';
 import 'theme/duo.dart';
 
-/// Choisit l'écran selon la situation : pas connecté → accueil, connecté
-/// sans alertes → questionnaire, sinon → l'appli.
+/// Choisit l'écran selon la situation : premier lancement → accueil, pas
+/// encore d'alertes → questionnaire, sinon → l'appli. On peut commencer sans
+/// compte : le compte est proposé après la première gorgée.
 class AppRoot extends StatefulWidget {
   const AppRoot({
     super.key,
@@ -31,6 +32,9 @@ class _AppRootState extends State<AppRoot> {
   /// Compte dont les données sont chargées ; null si personne.
   String? _loadedUid;
   bool _loading = false;
+
+  /// « Commencer » touché sans compte (questionnaire en cours).
+  bool _guest = false;
 
   @override
   void initState() {
@@ -55,6 +59,8 @@ class _AppRootState extends State<AppRoot> {
     _loadedUid = user?.uid;
     setState(() => _loading = true);
     if (user == null) {
+      // Déconnexion : le téléphone oublie tout, retour à l'accueil.
+      _guest = false;
       await widget.controller.onSignedOut();
       widget.social.reset();
     } else {
@@ -71,22 +77,27 @@ class _AppRootState extends State<AppRoot> {
       listenable: Listenable.merge([widget.auth.user, widget.controller]),
       builder: (context, _) {
         final user = widget.auth.user.value;
-        if (user == null) {
+        final c = widget.controller;
+        if (user == null && !_guest && !c.isSetUp) {
           return WelcomeScreen(
-              key: const ValueKey('welcome'), auth: widget.auth);
+            key: const ValueKey('welcome'),
+            auth: widget.auth,
+            onStart: () => setState(() => _guest = true),
+          );
         }
         if (_loading) return const _Loading();
-        if (!widget.controller.isSetUp) {
+        final who = user?.uid ?? 'invite';
+        if (!c.isSetUp) {
           return OnboardingScreen(
-            key: ValueKey('onboarding_${user.uid}'),
-            controller: widget.controller,
+            key: ValueKey('onboarding_$who'),
+            controller: c,
             isFirstRun: true,
             user: user,
           );
         }
         return MainShell(
-          key: ValueKey('main_${user.uid}'),
-          controller: widget.controller,
+          key: ValueKey('main_$who'),
+          controller: c,
           auth: widget.auth,
           social: widget.social,
         );

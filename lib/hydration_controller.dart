@@ -127,8 +127,9 @@ class HydrationController extends ChangeNotifier {
     await protectStreak();
     // Le prénom du compte fait foi (il peut changer dans les paramètres).
     final profile = _profile;
-    final name = user.firstName;
-    if (profile != null && name != null && name != profile.firstName) {
+    final name = user.firstName ?? profile?.firstName;
+    if (profile != null &&
+        (name != profile.firstName || user.email != profile.email)) {
       await saveProfile(profile.copyWith(firstName: name, email: user.email));
     }
     notifyListeners();
@@ -395,6 +396,12 @@ class HydrationController extends ChangeNotifier {
     await _store.cacheMax(_day, c.name, max);
     notifyListeners();
   }
+
+  /// Proposer le compte une fois, après la première alerte cochée sans compte.
+  bool get shouldPromptAccount =>
+      _uid == null && !_store.accountPromptShown && _stats.totalChecks > 0;
+
+  Future<void> markAccountPromptShown() => _store.markAccountPromptShown();
 
   /// Compte connecté (null hors connexion).
   String? get uid => _uid;

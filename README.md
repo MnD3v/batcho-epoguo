@@ -6,26 +6,24 @@ Application Flutter (Android et iOS) qui rappelle de boire de l'eau **toutes les
 ## Fonctionnalités
 
 Design façon jeu (style Duolingo) : couleurs vives, boutons en relief, police **Plus Jakarta Sans**,
-et **Reno**, le rein mascotte, qui guide et encourage.
+et **Reno**, le rein mascotte, qui guide, encourage et **parle** (bouton 🔊, voix du téléphone).
 
-- **Compte** : accueil, inscription (prénom, e-mail, mot de passe), connexion, mot de passe oublié.
-  La progression est sauvegardée en ligne et retrouvée sur un autre téléphone.
-- **Paramètres** : changer son prénom, modifier ses alertes, faire sonner un essai, se déconnecter,
-  supprimer son compte.
-- **Après l'inscription, une question par écran** : prénom et e-mail, quantité d'eau bue par jour
-  (moins de 1 L, environ 1,5 L, environ 2 L, plus de 2 L), difficultés (oubli, pas envie, pas d'eau
-  à côté, trop occupé), puis les alertes.
-- **Alertes** : toutes les 2 h ou toutes les 3 h (de 7h à 20h), ou à des heures précises avec la
-  quantité de chacune (ex. 9h 0,5 L, 12h 0,5 L…), 8 alertes au plus.
-- **Le téléphone sonne** comme un réveil : « Awa, lève-toi et bois ton eau ! », avec la quantité et
-  le message « Une greffe de rein coûte plus de 15 000 000 FCFA ».
-- **Parcours du jour** : les alertes en zigzag, à cocher. L'étape en cours s'ouvre à l'heure de
-  l'alerte, les oubliées peuvent être rattrapées, les suivantes sont verrouillées.
-- **XP et niveaux** : +10 XP par alerte cochée, +30 XP pour une journée parfaite, +5 XP par leçon lue.
-- **Flamme** : jours d'affilée avec au moins 70 % des alertes cochées.
-- **Mon évolution** (onglet Profil) : courbe du mois (litres bus chaque jour) et de l'année
-  (moyenne par jour, mois par mois), avec l'objectif en pointillés ; toucher la courbe pour lire une valeur.
-- **Badges**, **leçons illustrées** sur les reins et **profil** (statistiques, modifier ses alertes).
+- **On commence sans compte** : prénom, quantité bue par jour, difficultés, alertes. Le compte
+  (e-mail et mot de passe) est proposé après la première gorgée, et garde la progression déjà faite.
+- **Alertes riches** (awesome_notifications) : image de Reno ou du conseil du jour, boutons
+  **« J'ai bu ✓ »** (coche sans ouvrir l'appli) et **« Plus tard (15 min) »**. Son doux par défaut,
+  **fort (réveil)** au choix. Messages variés, dont « une greffe de rein coûte plus de 15 000 000 FCFA ».
+  Rappel du soir quand la flamme est en danger.
+- **Rythme** : toutes les 2 h ou 3 h (7h–20h), ou à des heures précises avec la quantité de chacune.
+- **Widget Android** : litres bus, jauge, flamme et bouton « J'ai bu ✓ ».
+- **Parcours du jour** en zigzag, **XP et niveaux**, **flamme** (70 % des alertes cochées),
+  **jours de repos** qui protègent la flamme (1 gagné tous les 7 jours, 2 au plus), paliers 7/30/100 jours,
+  **badges**, **leçons illustrées** sur les reins.
+- **Amis** : défis de la semaine par code (classement des litres), parrainage (+50 XP chacun),
+  partage d'une image sur WhatsApp.
+- **Mode chaleur** : ville choisie dans une liste (sans GPS) ; au-delà de 35 °C, Reno conseille 2 verres de plus.
+- **Profil** : courbes mensuelle et annuelle, statistiques ; **paramètres** : prénom, alertes, son,
+  ville, déconnexion, suppression du compte.
 
 Les données sont gardées sur le téléphone (`shared_preferences`) et sauvegardées dans Firestore,
 dans `users/{uid}` : prénom, e-mail, réponses au questionnaire en clair (lisibles dans la console

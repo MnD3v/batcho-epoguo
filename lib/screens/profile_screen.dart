@@ -5,6 +5,7 @@ import '../data/kidney_tips.dart';
 import '../hydration_controller.dart';
 import '../services/auth_service.dart';
 import '../social_controller.dart';
+import '../widgets/account_prompt.dart';
 import '../widgets/share_card.dart';
 import '../models/plan.dart';
 import '../theme/duo.dart';
@@ -83,6 +84,10 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ],
               ),
+              if (controller.uid == null) ...[
+                const SizedBox(height: 16),
+                AccountCta(auth: auth, controller: controller),
+              ],
               const SizedBox(height: 20),
               const Text('STATISTIQUES', style: Duo.label),
               const SizedBox(height: 10),

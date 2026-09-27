@@ -8,9 +8,12 @@ import '../widgets/duo_widgets.dart';
 
 /// Premier écran : Reno se présente, on s'inscrit ou on se connecte.
 class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({super.key, required this.auth});
+  const WelcomeScreen({super.key, required this.auth, required this.onStart});
 
   final AuthService auth;
+
+  /// Commencer sans compte (il sera proposé après la première gorgée).
+  final VoidCallback onStart;
 
   @override
   Widget build(BuildContext context) {
@@ -38,14 +41,7 @@ class WelcomeScreen extends StatelessWidget {
                 const _DemoNotice(),
                 const SizedBox(height: 16),
               ],
-              DuoButton(
-                label: 'Commencer',
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => SignUpScreen(auth: auth),
-                  ),
-                ),
-              ),
+              DuoButton(label: 'Commencer', onPressed: onStart),
               const SizedBox(height: 12),
               DuoButton.outline(
                 label: 'J\'ai déjà un compte',
@@ -160,16 +156,19 @@ class _LinkButton extends StatelessWidget {
 }
 
 class SignUpScreen extends StatefulWidget {
-  const SignUpScreen({super.key, required this.auth});
+  const SignUpScreen({super.key, required this.auth, this.firstName});
 
   final AuthService auth;
+
+  /// Prénom déjà donné au questionnaire (sans compte).
+  final String? firstName;
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
-  final _name = TextEditingController();
+  late final _name = TextEditingController(text: widget.firstName);
   final _email = TextEditingController();
   final _password = TextEditingController();
   String? _error;

@@ -61,9 +61,9 @@ class _MainShellState extends State<MainShell> {
       body: IndexedStack(
         index: _tab,
         children: [
-          PathScreen(controller: c),
+          PathScreen(controller: c, auth: widget.auth),
           LessonsScreen(controller: c),
-          FriendsScreen(social: widget.social),
+          FriendsScreen(social: widget.social, auth: widget.auth),
           BadgesScreen(controller: c),
           ProfileScreen(
             controller: c,

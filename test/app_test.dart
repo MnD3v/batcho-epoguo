@@ -78,25 +78,18 @@ void main() {
     return raw == null ? null : jsonDecode(raw) as Map<String, dynamic>;
   }
 
-  testWidgets('inscription, questionnaire et alertes à heures précises', (
-    tester,
-  ) async {
+  testWidgets(
+      'sans compte : questionnaire, première gorgée, puis compte qui garde '
+      'la progression', (tester) async {
     final c = await start(tester, {});
     expect(find.text('Bois & Vis'), findsOneWidget);
     expect(find.textContaining('Mode démo'), findsOneWidget);
     await tap(tester, text('COMMENCER'));
 
-    // Le bouton reste gris tant que tout n'est pas valide.
+    // Le prénom d'abord, sans compte.
+    expect(find.textContaining('comment tu t\'appelles'), findsOneWidget);
     await type(tester, 'Prénom', 'Awa');
-    await type(tester, 'E-mail', 'awa@exemple');
-    await type(tester, 'Mot de passe', '123');
-    expect(find.text('Adresse e-mail invalide'), findsOneWidget);
-    expect(find.text('Trop court : 6 caractères minimum'), findsOneWidget);
-    await tap(tester, text('CRÉER MON COMPTE'));
-    expect(find.text('Adresse e-mail invalide'), findsOneWidget);
-    await type(tester, 'E-mail', 'awa@exemple.com');
-    await type(tester, 'Mot de passe', 'secret1');
-    await tap(tester, text('CRÉER MON COMPTE'));
+    await tap(tester, text('CONTINUER'));
 
     expect(find.textContaining('Bienvenue, Awa !'), findsOneWidget);
     await tap(tester, text('Environ 2 L'));
@@ -136,9 +129,32 @@ void main() {
       Reminder(20 * 60, 500),
     ]);
     expect(find.text('0 L sur 2,25 L'), findsOneWidget);
-    expect(c.profile?.email, 'awa@exemple.com');
+    expect(c.uid, isNull);
 
-    // Les réponses sont sauvegardées « en ligne ».
+    // Première gorgée : +10 XP, badge, puis Reno propose le compte.
+    await tap(tester, find.byKey(const ValueKey('slot_09:00')));
+    await tap(tester, text('CONTINUER'));
+    await tap(tester, text('CONTINUER'));
+    expect(
+      find.textContaining('Crée ton compte pour ne pas perdre tes 10 XP'),
+      findsOneWidget,
+    );
+    await tap(tester, text('CRÉER MON COMPTE'));
+
+    // Prénom déjà rempli ; le bouton reste gris tant que ce n'est pas valide.
+    expect(find.text('Awa'), findsOneWidget);
+    await type(tester, 'E-mail', 'awa@exemple');
+    await type(tester, 'Mot de passe', '123');
+    expect(find.text('Adresse e-mail invalide'), findsOneWidget);
+    expect(find.text('Trop court : 6 caractères minimum'), findsOneWidget);
+    await type(tester, 'E-mail', 'awa@exemple.com');
+    await type(tester, 'Mot de passe', 'secret1');
+    await tap(tester, text('CRÉER MON COMPTE'));
+
+    // La progression est gardée et sauvegardée « en ligne ».
+    expect(find.text('0,75 L sur 2,25 L'), findsOneWidget);
+    expect(c.xp, 10);
+    expect(c.profile?.email, 'awa@exemple.com');
     await tester.pumpAndSettle();
     final uid = prefs.getString('demo_current_uid')!;
     final doc = cloudDoc(uid)!;
@@ -147,6 +163,16 @@ void main() {
     expect(doc['usualIntake'], 'Environ 2 L');
     expect(doc['difficulties'], contains('J\'oublie de boire'));
     expect(doc['dailyGoalMl'], 2250);
+    expect(doc['xp'], 10);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('sans compte : les amis demandent un compte', (tester) async {
+    await start(tester, setUpPrefs);
+    await tester.tap(find.bySemanticsLabel('Amis'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Crée ton compte pour défier tes amis'),
+        findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 

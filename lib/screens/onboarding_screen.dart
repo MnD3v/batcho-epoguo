@@ -10,7 +10,7 @@ import '../services/reminder_scheduler.dart';
 import '../theme/duo.dart';
 import '../widgets/duo_widgets.dart';
 
-enum _Step { intake, difficulties, rhythm, amounts, ready }
+enum _Step { name, intake, difficulties, rhythm, amounts, ready }
 
 /// Après l'inscription : Reno pose une question par écran, puis active les
 /// alertes. Depuis les paramètres, seules les étapes des alertes sont montrées.
@@ -33,14 +33,27 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  late final _steps = widget.isFirstRun
-      ? _Step.values
-      : const [_Step.rhythm, _Step.amounts, _Step.ready];
+  /// Sans compte, on demande d'abord le prénom (pour « Awa, lève-toi… »).
+  late final _steps = !widget.isFirstRun
+      ? const [_Step.rhythm, _Step.amounts, _Step.ready]
+      : widget.user == null
+          ? _Step.values
+          : _Step.values.where((s) => s != _Step.name).toList();
   int _index = 0;
   bool _saving = false;
 
-  late final String _firstName =
-      widget.user?.firstName ?? widget.controller.profile?.firstName ?? '';
+  late final _name = TextEditingController(
+    text: widget.user?.firstName ?? widget.controller.profile?.firstName ?? '',
+  );
+
+  String get _firstName => _name.text.trim();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
   late final String _email =
       widget.user?.email ?? widget.controller.profile?.email ?? '';
   late UsualIntake? _intake = widget.controller.profile?.usualIntake;
@@ -63,6 +76,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   bool get _canContinue => switch (_step) {
+        _Step.name => _firstName.isNotEmpty,
         _Step.intake => _intake != null,
         _Step.amounts => _plan.reminders.isNotEmpty,
         _ => true,
@@ -77,6 +91,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _next() async {
+    FocusScope.of(context).unfocus();
     if (_step == _Step.difficulties) {
       await widget.controller.saveProfile(
         UserProfile(
@@ -143,6 +158,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                     children: switch (_step) {
+                      _Step.name => _nameStep(),
                       _Step.intake => _intakeStep(),
                       _Step.difficulties => _difficultiesStep(),
                       _Step.rhythm => _rhythm(),
@@ -172,6 +188,36 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     );
   }
+
+  List<Widget> _nameStep() => [
+        const SizedBox(height: 8),
+        Center(
+          child: SvgPicture.asset(
+            'assets/mascot/mascot_cheer.svg',
+            height: 150,
+          ),
+        ),
+        const SizedBox(height: 16),
+        const SpeechBubble(
+          text: 'Salut ! Moi, c\'est Reno, ton rein. Et toi, comment tu '
+              't\'appelles ?',
+        ),
+        const SizedBox(height: 20),
+        DuoTextField(
+          controller: _name,
+          label: 'Prénom',
+          hint: 'Ex. Awa',
+          capitalization: TextCapitalization.words,
+          action: TextInputAction.done,
+          onChanged: () => setState(() {}),
+          onSubmitted: _canContinue ? _next : null,
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          healthDisclaimer,
+          style: TextStyle(fontSize: 12, color: Duo.gray, height: 1.4),
+        ),
+      ];
 
   List<Widget> _intakeStep() => [
         MascotSays(
