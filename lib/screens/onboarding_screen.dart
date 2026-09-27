@@ -445,7 +445,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const Text('Et entre deux alertes ?', style: Duo.heading),
             const SizedBox(height: 4),
             Text(
-              'Bois quand tu veux ! Touche « + J\'ai bu » sur ton parcours : '
+              'Bois quand tu veux ! Touche « Je viens de boire » sur ton parcours : '
               'ça compte dans ton total (+$xpPerExtraDrink XP).',
               style: Duo.body.copyWith(fontSize: 15),
             ),

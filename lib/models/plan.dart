@@ -53,7 +53,7 @@ class ExtraDrink {
   int get hashCode => Object.hash(minutes, ml);
 }
 
-/// Ce qu'on peut noter d'un geste avec « + J'ai bu ».
+/// Ce qu'on peut noter d'un geste avec « Je viens de boire ».
 const extraDrinkChoices = [
   (label: 'Un verre', ml: 250, asset: 'assets/drinks/glass.svg'),
   (label: 'Un pure water', ml: 500, asset: 'assets/drinks/pure_water.svg'),

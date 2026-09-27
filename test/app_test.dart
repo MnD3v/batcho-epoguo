@@ -231,10 +231,10 @@ void main() {
     await tap(tester, find.byKey(const ValueKey('slot_11:00')));
     expect(find.textContaining('Cette alerte s\'ouvre à 11:00 🔒'),
         findsOneWidget);
-    expect(find.textContaining('« + J\'ai bu »'), findsWidgets);
+    expect(find.textContaining('« Je viens de boire »'), findsWidgets);
 
-    // Boire à tout moment : « + J'ai bu », puis un pure water.
-    await tap(tester, text('+ J\'AI BU'));
+    // Boire à tout moment : « Je viens de boire », puis un pure water.
+    await tap(tester, text('Je viens de boire'));
     await tap(tester, text('Un pure water'));
     expect(find.text('+5 XP'), findsOneWidget);
     await tap(tester, text('CONTINUER'));

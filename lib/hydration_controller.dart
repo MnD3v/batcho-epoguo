@@ -441,7 +441,7 @@ class HydrationController extends ChangeNotifier {
     return _finish(before);
   }
 
-  /// « + J'ai bu » : un verre bu à tout moment, en dehors des alertes.
+  /// « Je viens de boire » : un verre bu à tout moment, en dehors des alertes.
   /// Compte dans le total du jour ; +5 XP les 4 premières fois de la
   /// journée. Ne coche pas d'alerte (la flamme récompense la régularité).
   Future<Reward> drinkExtra(int ml) async {

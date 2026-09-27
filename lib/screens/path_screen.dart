@@ -86,7 +86,7 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
           SnackBar(
             content: Text(
               'Cette alerte s\'ouvre à ${reminder.time} 🔒 Tu as déjà bu ? '
-              'Touche « + J\'ai bu ».',
+              'Touche « Je viens de boire ».',
             ),
           ),
         );
@@ -102,7 +102,7 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
     }
   }
 
-  /// « + J'ai bu » : un verre à tout moment, en dehors des alertes.
+  /// « Je viens de boire » : un verre à tout moment, en dehors des alertes.
   Future<void> _drinkExtra() async {
     final ml = await showModalBottomSheet<int>(
       context: context,
@@ -351,7 +351,7 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/// Grande carte bleue « + J'ai bu » qui s'enfonce quand on appuie.
+/// Grande carte bleue « Je viens de boire » qui s'enfonce quand on appuie.
 class _DrinkCard extends StatefulWidget {
   const _DrinkCard({required this.onTap});
 
@@ -405,12 +405,11 @@ class _DrinkCardState extends State<_DrinkCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '+ J\'AI BU',
+                        'Je viens de boire',
                         style: Duo.heading.copyWith(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
                           color: Duo.blueDark,
-                          letterSpacing: 0.8,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -443,7 +442,7 @@ class _DrinkCardState extends State<_DrinkCard> {
   }
 }
 
-/// « + J'ai bu » et les verres bus en dehors des alertes aujourd'hui.
+/// « Je viens de boire » et les verres bus en dehors des alertes aujourd'hui.
 class _ExtraDrinks extends StatelessWidget {
   const _ExtraDrinks({required this.controller, required this.onDrink});
 
