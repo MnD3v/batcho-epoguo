@@ -351,6 +351,110 @@ class _TopBar extends StatelessWidget {
   }
 }
 
+/// Grande carte bleue « + J'ai bu » qui s'enfonce quand on appuie.
+class _DrinkCard extends StatefulWidget {
+  const _DrinkCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  State<_DrinkCard> createState() => _DrinkCardState();
+}
+
+class _DrinkCardState extends State<_DrinkCard> {
+  static const _depth = 5.0;
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final offset = _down ? _depth : 0.0;
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _down = true),
+        onTapCancel: () => setState(() => _down = false),
+        onTapUp: (_) {
+          setState(() => _down = false);
+          HapticFeedback.lightImpact();
+          widget.onTap();
+        },
+        child: Padding(
+          padding: EdgeInsets.only(top: offset),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
+            decoration: BoxDecoration(
+              color: Duo.blueLight,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Duo.blue, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Duo.blueDark,
+                  offset: Offset(0, _depth - offset),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Pastille blanche : le verre ressort bien sur le bleu.
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border:
+                        Border.all(color: const Color(0xFFB8E6FC), width: 2),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Pulse(
+                    amount: 0.06,
+                    child: GameIcon('glass', size: 46),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '+ J\'AI BU',
+                        style: Duo.heading.copyWith(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Duo.blueDark,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Tu peux boire à tout moment, même entre les alertes.',
+                        style: Duo.body.copyWith(
+                          fontSize: 13,
+                          color: Duo.blueDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    color: Duo.blue,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.add_rounded, color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// « + J'ai bu » et les verres bus en dehors des alertes aujourd'hui.
 class _ExtraDrinks extends StatelessWidget {
   const _ExtraDrinks({required this.controller, required this.onDrink});
@@ -364,17 +468,7 @@ class _ExtraDrinks extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DuoButton.outline(
-          label: '+ J\'ai bu',
-          icon: 'glass',
-          onPressed: onDrink,
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Tu peux boire à tout moment, même entre les alertes : note-le ici.',
-          textAlign: TextAlign.center,
-          style: Duo.body.copyWith(fontSize: 13),
-        ),
+        _DrinkCard(onTap: onDrink),
         if (extras.isNotEmpty) ...[
           const SizedBox(height: 10),
           Wrap(
