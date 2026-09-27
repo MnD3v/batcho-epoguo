@@ -185,12 +185,16 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
                       _FrozenNotice(controller: _c),
                       const SizedBox(height: 16),
                     ],
-                    _ExtraDrinks(controller: _c, onDrink: _drinkExtra),
+                    _DrinkCard(onTap: _drinkExtra),
                     const SizedBox(height: 16),
                     LayoutBuilder(
                       builder: (context, constraints) =>
                           _path(constraints.maxWidth),
                     ),
+                    if (_c.extras.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      _ExtraDrinkLog(controller: _c),
+                    ],
                   ],
                 ),
               ),
@@ -511,46 +515,99 @@ class _DrinkCardState extends State<_DrinkCard> {
   }
 }
 
-/// « Je viens de boire » et les verres bus en dehors des alertes aujourd'hui.
-class _ExtraDrinks extends StatelessWidget {
-  const _ExtraDrinks({required this.controller, required this.onDrink});
+/// En bas du parcours : les verres bus en dehors des alertes aujourd'hui,
+/// comme un petit journal.
+class _ExtraDrinkLog extends StatelessWidget {
+  const _ExtraDrinkLog({required this.controller});
 
   final HydrationController controller;
-  final VoidCallback onDrink;
 
   @override
   Widget build(BuildContext context) {
     final extras = controller.extras;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _DrinkCard(onTap: onDrink),
-        if (extras.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
+    final total = extras.fold(0, (sum, e) => sum + e.ml);
+    return DuoCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
-              for (final drink in extras)
-                PopIn(
-                  child: InputChip(
-                    avatar: const GameIcon('drop', size: 20),
-                    label: Text(
-                      '${drink.time} · ${formatLiters(drink.ml)}',
-                      style: Duo.heading.copyWith(fontSize: 13),
-                    ),
-                    backgroundColor: Duo.blueLight,
-                    side: const BorderSide(color: Duo.blue, width: 1.5),
-                    deleteIcon: const Icon(Icons.close_rounded, size: 18),
-                    deleteButtonTooltipMessage: 'Annuler',
-                    onDeleted: () => controller.removeExtra(drink),
+              const GameIcon('glass', size: 30),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'BU EN PLUS DES ALERTES',
+                  style: Duo.label.copyWith(fontSize: 13),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Duo.blue,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '+${formatLiters(total)}',
+                  style: const TextStyle(
+                    fontFamily: Duo.font,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
                   ),
                 ),
+              ),
+              const SizedBox(width: 8),
             ],
           ),
+          const SizedBox(height: 6),
+          for (final (i, drink) in extras.indexed) ...[
+            if (i > 0) const Divider(height: 2, thickness: 2, color: Duo.snow),
+            PopIn(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Duo.blueLight,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: const GameIcon('drop', size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            formatLiters(drink.ml),
+                            style: Duo.heading.copyWith(fontSize: 16),
+                          ),
+                          Text(
+                            'à ${drink.time}',
+                            style: Duo.body.copyWith(fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Annuler',
+                      onPressed: () => controller.removeExtra(drink),
+                      icon: const GameIcon('trash', size: 26),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
