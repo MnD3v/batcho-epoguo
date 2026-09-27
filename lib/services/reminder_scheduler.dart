@@ -80,9 +80,9 @@ class AwesomeReminderScheduler implements ReminderScheduler {
   static const _eveningId = 800000;
   static const _blue = Color(0xFF1CB0F6);
 
-  /// Mise en page « conversation » : le visage de Reno s'affiche en rond à
-  /// gauche, comme la chouette de Duolingo (BigPicture le mettrait à droite).
-  static const layout = NotificationLayout.Messaging;
+  /// Titre en gras en haut, texte dessous, visage de Reno en rond ;
+  /// l'illustration du conseil apparaît quand on déplie la notification.
+  static const layout = NotificationLayout.BigPicture;
   static const _green = Color(0xFF58CC02);
 
   @override
@@ -229,9 +229,9 @@ class AwesomeReminderScheduler implements ReminderScheduler {
         title: message.title,
         body: message.body,
         largeIcon: message.avatar,
+        roundedLargeIcon: true,
+        bigPicture: 'asset://assets/notif/mascot_sad.png',
         notificationLayout: layout,
-        // Une conversation par notification : pas d'historique empilé.
-        groupKey: 'alerte_$_eveningId',
         category: NotificationCategory.Reminder,
         color: _blue,
       ),
@@ -259,8 +259,9 @@ class AwesomeReminderScheduler implements ReminderScheduler {
         body: action.body,
         // Reno s'inquiète un peu : c'est la deuxième fois.
         largeIcon: 'asset://assets/notif/reno_mood_1.png',
+        roundedLargeIcon: true,
+        bigPicture: action.bigPicture,
         notificationLayout: layout,
-        groupKey: 'alerte_snooze_${minutes ?? ''}',
         category: NotificationCategory.Reminder,
         color: _blue,
         wakeUpScreen: true,
@@ -310,8 +311,9 @@ class AwesomeReminderScheduler implements ReminderScheduler {
       title: message.title,
       body: '${message.body}\n${tip.short}',
       largeIcon: message.avatar,
+      roundedLargeIcon: true,
+      bigPicture: notificationImage(tip.asset),
       notificationLayout: layout,
-      groupKey: 'alerte_$id',
       category:
           loud ? NotificationCategory.Alarm : NotificationCategory.Reminder,
       color: _blue,
