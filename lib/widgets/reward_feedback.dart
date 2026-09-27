@@ -1,0 +1,237 @@
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+import '../models/game.dart';
+import '../theme/duo.dart';
+import 'duo_widgets.dart';
+
+const _praises = [
+  'Excellent !',
+  'Bien joué !',
+  'Super !',
+  'Parfait !',
+  'Tes reins te disent merci !',
+  'Continue comme ça !',
+];
+
+/// Panneau vert en bas de l'écran après une bonne action, puis la fête en
+/// plein écran si l'objectif du jour, un niveau ou un badge vient de tomber.
+Future<void> showReward(
+  BuildContext context,
+  Reward reward, {
+  String? message,
+}) async {
+  if (reward.xp <= 0 && reward.badges.isEmpty) return;
+  final praise = _praises[math.Random().nextInt(_praises.length)];
+  await showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Duo.greenLight,
+    barrierColor: Colors.black26,
+    shape: const RoundedRectangleBorder(),
+    builder: (context) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check_rounded, color: Duo.green),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    praise,
+                    style: Duo.title.copyWith(color: Duo.greenDark),
+                  ),
+                ),
+                if (reward.xp > 0)
+                  StatChip(
+                    icon: 'assets/icons/xp.svg',
+                    value: '+${reward.xp} XP',
+                    color: Duo.blueDark,
+                  ),
+              ],
+            ),
+            if (message != null) ...[
+              const SizedBox(height: 10),
+              Text(message, style: Duo.body.copyWith(color: Duo.greenDark)),
+            ],
+            const SizedBox(height: 18),
+            DuoButton(
+              label: 'Continuer',
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+  if (!context.mounted) return;
+  if (reward.goalReached ||
+      reward.levelUp != null ||
+      reward.badges.isNotEmpty) {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => CelebrationScreen(reward: reward),
+      ),
+    );
+  }
+}
+
+class CelebrationScreen extends StatelessWidget {
+  const CelebrationScreen({super.key, required this.reward});
+
+  final Reward reward;
+
+  @override
+  Widget build(BuildContext context) {
+    final level = reward.levelUp;
+    final title = reward.goalReached
+        ? 'Objectif du jour atteint !'
+        : level != null
+        ? 'Niveau ${level.number} : ${level.name} !'
+        : reward.badges.length > 1
+        ? 'Nouveaux badges !'
+        : 'Nouveau badge !';
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              const Spacer(),
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.4, end: 1),
+                duration: const Duration(milliseconds: 700),
+                curve: Curves.elasticOut,
+                builder: (context, v, child) =>
+                    Transform.scale(scale: v, child: child),
+                child: SvgPicture.asset(
+                  'assets/mascot/mascot_cheer.svg',
+                  height: 200,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: Duo.title.copyWith(color: Duo.gold, fontSize: 28),
+              ),
+              const SizedBox(height: 8),
+              if (reward.goalReached)
+                const Text(
+                  'Tes 7 rappels sont cochés. Reno est au top de sa forme !',
+                  textAlign: TextAlign.center,
+                  style: Duo.body,
+                ),
+              if (level != null && reward.goalReached)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Et tu passes au niveau ${level.number} : ${level.name} !',
+                    textAlign: TextAlign.center,
+                    style: Duo.body.copyWith(color: Duo.blueDark),
+                  ),
+                ),
+              const SizedBox(height: 24),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.center,
+                children: [
+                  if (reward.xp > 0)
+                    _StatBox(
+                      label: 'XP gagnés',
+                      value: '+${reward.xp}',
+                      color: Duo.gold,
+                      icon: 'assets/icons/xp.svg',
+                    ),
+                  for (final badge in reward.badges)
+                    _StatBox(
+                      label: 'Badge',
+                      value: badge.title,
+                      color: badge.color,
+                      icon: badge.icon,
+                    ),
+                ],
+              ),
+              const Spacer(),
+              DuoButton(
+                label: 'Continuer',
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatBox extends StatelessWidget {
+  const _StatBox({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+  final String icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 140,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.all(2),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(
+              label.toUpperCase(),
+              style: Duo.label.copyWith(color: Colors.white, fontSize: 12),
+            ),
+          ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              children: [
+                SvgPicture.asset(icon, width: 32, height: 32),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  textAlign: TextAlign.center,
+                  style: Duo.heading.copyWith(color: color, fontSize: 17),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
