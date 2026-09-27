@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Empêche la suppression de l'icône de notification au build release. -->
+<!-- Empêche la suppression de l'icône et des sonneries au build release. -->
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@drawable/ic_notification" />
+    tools:keep="@drawable/ic_notification,@raw/bois_doux,@raw/bois_fort" />

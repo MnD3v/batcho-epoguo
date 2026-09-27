@@ -56,9 +56,27 @@ class AwesomeReminderScheduler implements ReminderScheduler {
 
   final _notifications = AwesomeNotifications();
 
-  /// Son de notification (par défaut) ou sonnerie de réveil.
-  static const channelKey = 'alertes_eau';
-  static const loudChannelKey = 'alertes_eau_fortes';
+  /// Son doux (par défaut) ou sonnerie de réveil. Android fige le son et
+  /// la vibration d'un canal : on change de clé quand ils changent.
+  static const channelKey = 'alertes_eau_v2';
+  static const loudChannelKey = 'alertes_eau_fortes_v2';
+  static const _oldChannelKeys = ['alertes_eau', 'alertes_eau_fortes'];
+
+  /// Sonneries de l'appli : gouttes d'eau + carillon
+  /// (tool/generate_sounds.py ; res/raw sur Android, .aiff sur iOS).
+  static const softSound = 'resource://raw/bois_doux';
+  static const loudSound = 'resource://raw/bois_fort';
+
+  /// Vibration « glou-glou-glou… glouuup » : trois gorgées puis une longue.
+  static final softVibration =
+      Int64List.fromList([0, 90, 70, 90, 70, 90, 250, 450]);
+
+  /// En mode fort, le même rythme joué trois fois.
+  static final loudVibration = Int64List.fromList([
+    0, 120, 80, 120, 80, 120, 300, 600, 500, //
+    120, 80, 120, 80, 120, 300, 600, 500, //
+    120, 80, 120, 80, 120, 300, 900,
+  ]);
   static const _eveningId = 800000;
   static const _blue = Color(0xFF1CB0F6);
   static const _green = Color(0xFF58CC02);
@@ -71,13 +89,15 @@ class AwesomeReminderScheduler implements ReminderScheduler {
         NotificationChannel(
           channelKey: channelKey,
           channelName: 'Alertes pour boire',
-          channelDescription: 'Son doux aux heures où tu dois boire',
+          channelDescription:
+              'Gouttes d\'eau et carillon aux heures où tu dois boire',
           importance: NotificationImportance.High,
           defaultColor: _blue,
           ledColor: _blue,
           playSound: true,
           enableVibration: true,
-          vibrationPattern: Int64List.fromList([0, 400, 200, 400]),
+          soundSource: softSound,
+          vibrationPattern: softVibration,
           defaultRingtoneType: DefaultRingtoneType.Notification,
         ),
         NotificationChannel(
@@ -90,12 +110,19 @@ class AwesomeReminderScheduler implements ReminderScheduler {
           ledColor: _blue,
           playSound: true,
           enableVibration: true,
-          vibrationPattern: Int64List.fromList([0, 600, 300, 600, 300, 600]),
+          soundSource: loudSound,
+          vibrationPattern: loudVibration,
           defaultRingtoneType: DefaultRingtoneType.Alarm,
         ),
       ],
       languageCode: 'fr',
     );
+    // Anciens canaux (son du téléphone) : retirés des réglages.
+    for (final key in _oldChannelKeys) {
+      try {
+        await _notifications.removeChannel(key);
+      } catch (_) {}
+    }
     await _notifications.setListeners(onActionReceivedMethod: onAction);
   }
 
@@ -220,7 +247,9 @@ class AwesomeReminderScheduler implements ReminderScheduler {
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: 900000 + (int.tryParse(minutes ?? '') ?? 0),
-        channelKey: action.channelKey ?? channelKey,
+        channelKey: (action.channelKey ?? '').startsWith('alertes_eau_fortes')
+            ? loudChannelKey
+            : channelKey,
         title: action.title,
         body: action.body,
         bigPicture: action.bigPicture,
