@@ -24,9 +24,9 @@ class DuoButton extends StatefulWidget {
     required this.onPressed,
     this.textColor = Duo.blue,
     this.icon,
-  }) : color = Colors.white,
-       shadow = Duo.border,
-       borderColor = Duo.border;
+  })  : color = Colors.white,
+        shadow = Duo.border,
+        borderColor = Duo.border;
 
   final String label;
   final VoidCallback? onPressed;
@@ -345,4 +345,122 @@ class _BubblePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_BubblePainter old) => false;
+}
+
+/// Champ de saisie arrondi ; pour un mot de passe, un œil pour l'afficher.
+class DuoTextField extends StatefulWidget {
+  const DuoTextField({
+    super.key,
+    required this.controller,
+    required this.label,
+    this.hint,
+    this.keyboard = TextInputType.text,
+    this.capitalization = TextCapitalization.none,
+    this.password = false,
+    this.error,
+    this.onChanged,
+    this.onSubmitted,
+    this.autofillHints,
+    this.action = TextInputAction.next,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final String? hint;
+  final TextInputType keyboard;
+  final TextCapitalization capitalization;
+  final bool password;
+  final String? error;
+  final VoidCallback? onChanged;
+  final VoidCallback? onSubmitted;
+  final Iterable<String>? autofillHints;
+  final TextInputAction action;
+
+  @override
+  State<DuoTextField> createState() => _DuoTextFieldState();
+}
+
+class _DuoTextFieldState extends State<DuoTextField> {
+  bool _hidden = true;
+
+  @override
+  Widget build(BuildContext context) {
+    OutlineInputBorder border(Color color) => OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: color, width: 2),
+        );
+    return TextField(
+      controller: widget.controller,
+      keyboardType: widget.keyboard,
+      textCapitalization: widget.capitalization,
+      obscureText: widget.password && _hidden,
+      autocorrect: false,
+      enableSuggestions: !widget.password,
+      autofillHints: widget.autofillHints,
+      textInputAction: widget.action,
+      onChanged: (_) => widget.onChanged?.call(),
+      onSubmitted: (_) => widget.onSubmitted?.call(),
+      style: Duo.heading.copyWith(fontSize: 17),
+      decoration: InputDecoration(
+        labelText: widget.label,
+        hintText: widget.hint,
+        errorText: widget.error,
+        filled: true,
+        fillColor: Duo.snow,
+        labelStyle: Duo.body,
+        hintStyle: Duo.body.copyWith(color: Duo.gray),
+        border: border(Duo.border),
+        enabledBorder: border(Duo.border),
+        focusedBorder: border(Duo.blue),
+        errorBorder: border(Duo.red),
+        focusedErrorBorder: border(Duo.red),
+        suffixIcon: widget.password
+            ? IconButton(
+                tooltip: _hidden
+                    ? 'Afficher le mot de passe'
+                    : 'Cacher le mot de passe',
+                onPressed: () => setState(() => _hidden = !_hidden),
+                icon: Icon(
+                  _hidden
+                      ? Icons.visibility_rounded
+                      : Icons.visibility_off_rounded,
+                  color: Duo.gray,
+                ),
+              )
+            : null,
+      ),
+    );
+  }
+}
+
+/// Message d'erreur rouge, façon « mauvaise réponse ».
+class ErrorBanner extends StatelessWidget {
+  const ErrorBanner(this.message, {super.key});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Duo.redLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Duo.red, width: 2),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_rounded, color: Duo.redDark),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: Duo.body.copyWith(color: Duo.redDark, fontSize: 15),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

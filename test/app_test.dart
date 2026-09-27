@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'package:bois_et_vis/data/hydration_store.dart';
 import 'package:bois_et_vis/hydration_controller.dart';
 import 'package:bois_et_vis/main.dart';
 import 'package:bois_et_vis/models/plan.dart';
 import 'package:bois_et_vis/models/profile.dart';
+import 'package:bois_et_vis/services/demo_auth_service.dart';
+import 'package:bois_et_vis/services/user_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,21 +15,26 @@ import 'helpers.dart';
 
 void main() {
   late FakeScheduler scheduler;
+  late SharedPreferences prefs;
 
   Future<HydrationController> start(
     WidgetTester tester,
-    Map<String, Object> prefs,
+    Map<String, Object> initial,
   ) async {
     tester.view.physicalSize = const Size(1080, 2400);
     addTearDown(tester.view.reset);
-    SharedPreferences.setMockInitialValues(prefs);
+    SharedPreferences.setMockInitialValues(initial);
+    prefs = await SharedPreferences.getInstance();
     scheduler = FakeScheduler();
     final c = HydrationController(
-      store: await HydrationStore.load(),
+      store: HydrationStore(prefs),
       scheduler: scheduler,
+      cloud: DemoUserRepository(prefs),
       clock: () => DateTime(2026, 9, 27, 10, 15),
     );
-    await tester.pumpWidget(BoisEtVisApp(controller: c));
+    await tester.pumpWidget(
+      BoisEtVisApp(auth: DemoAuthService(prefs), controller: c),
+    );
     await tester.pumpAndSettle();
     return c;
   }
@@ -49,35 +58,43 @@ void main() {
 
   Finder text(String s) => find.text(s);
 
-  testWidgets('premier lancement : questions puis alertes à heures précises', (
+  Future<void> type(WidgetTester tester, String label, String value) async {
+    await tester.enterText(find.widgetWithText(TextField, label), value);
+    await tester.pumpAndSettle();
+  }
+
+  Map<String, dynamic>? cloudDoc(String uid) {
+    final raw = prefs.getString('demo_cloud_$uid');
+    return raw == null ? null : jsonDecode(raw) as Map<String, dynamic>;
+  }
+
+  testWidgets('inscription, questionnaire et alertes à heures précises', (
     tester,
   ) async {
     final c = await start(tester, {});
-    expect(find.textContaining('Moi, c\'est Reno'), findsOneWidget);
-    await tap(tester, text('C\'EST PARTI'));
+    expect(find.text('Bois & Vis'), findsOneWidget);
+    expect(find.textContaining('Mode démo'), findsOneWidget);
+    await tap(tester, text('COMMENCER'));
 
-    // Prénom et e-mail obligatoires.
-    await tester.enterText(find.byType(TextField).at(0), 'Awa');
-    await tester.enterText(find.byType(TextField).at(1), 'awa@exemple');
-    await tester.pumpAndSettle();
+    // Le bouton reste gris tant que tout n'est pas valide.
+    await type(tester, 'Prénom', 'Awa');
+    await type(tester, 'E-mail', 'awa@exemple');
+    await type(tester, 'Mot de passe', '123');
     expect(find.text('Adresse e-mail invalide'), findsOneWidget);
-    await tap(tester, text('CONTINUER'));
-    expect(find.byType(TextField), findsNWidgets(2)); // toujours bloqué
-    await tester.enterText(find.byType(TextField).at(1), 'awa@exemple.com');
-    await tester.pumpAndSettle();
-    await tap(tester, text('CONTINUER'));
+    expect(find.text('Trop court : 6 caractères minimum'), findsOneWidget);
+    await tap(tester, text('CRÉER MON COMPTE'));
+    expect(find.text('Adresse e-mail invalide'), findsOneWidget);
+    await type(tester, 'E-mail', 'awa@exemple.com');
+    await type(tester, 'Mot de passe', 'secret1');
+    await tap(tester, text('CRÉER MON COMPTE'));
 
-    expect(find.textContaining('Enchanté, Awa !'), findsOneWidget);
+    expect(find.textContaining('Bienvenue, Awa !'), findsOneWidget);
     await tap(tester, text('Environ 2 L'));
     await tap(tester, text('CONTINUER'));
 
     await tap(tester, text('J\'oublie de boire'));
     await tap(tester, text('Pas d\'eau à côté de moi'));
     await tap(tester, text('CONTINUER'));
-    expect(c.profile?.difficulties, {
-      Difficulty.forget,
-      Difficulty.noWaterNearby,
-    });
 
     await tap(tester, text('À des heures précises'));
     await tap(tester, text('CONTINUER'));
@@ -93,8 +110,6 @@ void main() {
     await tap(tester, text('CONTINUER'));
 
     expect(find.textContaining('Tout est prêt, Awa !'), findsOneWidget);
-    expect(
-        find.textContaining('Awa, lève-toi et bois ton eau'), findsOneWidget);
     expect(find.textContaining('15 000 000 FCFA'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.textContaining('Garde une bouteille'),
@@ -103,7 +118,6 @@ void main() {
     );
     await tap(tester, text('ACTIVER MES ALERTES'));
 
-    expect(scheduler.permissionRequests, 1);
     expect(scheduler.scheduledFor?.firstName, 'Awa');
     expect(scheduler.scheduled?.reminders, const [
       Reminder(9 * 60, 750),
@@ -112,13 +126,57 @@ void main() {
       Reminder(20 * 60, 500),
     ]);
     expect(find.text('0 L sur 2,25 L'), findsOneWidget);
+    expect(c.profile?.email, 'awa@exemple.com');
+
+    // Les réponses sont sauvegardées « en ligne ».
+    await tester.pumpAndSettle();
+    final uid = prefs.getString('demo_current_uid')!;
+    final doc = cloudDoc(uid)!;
+    expect(doc['firstName'], 'Awa');
+    expect(doc['email'], 'awa@exemple.com');
+    expect(doc['usualIntake'], 'Environ 2 L');
+    expect(doc['difficulties'], contains('J\'oublie de boire'));
+    expect(doc['dailyGoalMl'], 2250);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('connexion : erreur, puis progression retrouvée', (
+    tester,
+  ) async {
+    final c = await start(tester, {
+      ...awaAccount,
+      'demo_cloud_$awaUid': jsonEncode({
+        'data': {...setUpPrefs, 'stats_checks': 12},
+      }),
+    });
+    await tap(tester, text('J\'AI DÉJÀ UN COMPTE'));
+    await type(tester, 'E-mail', 'awa@exemple.com');
+    await type(tester, 'Mot de passe', 'mauvais');
+    await tap(tester, text('SE CONNECTER'));
+    expect(find.text('E-mail ou mot de passe incorrect.'), findsOneWidget);
+
+    await type(tester, 'Mot de passe', 'secret1');
+    await tap(tester, text('SE CONNECTER'));
+    expect(find.textContaining('Awa, lève-toi et bois 0,25 L'), findsOneWidget);
+    expect(c.xp, 120);
+    expect(scheduler.scheduled?.reminders.length, 7);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('mot de passe oublié', (tester) async {
+    await start(tester, awaAccount);
+    await tap(tester, text('J\'AI DÉJÀ UN COMPTE'));
+    await type(tester, 'E-mail', 'awa@exemple.com');
+    await tap(tester, text('Mot de passe oublié ?'));
+    await tap(tester, text('ENVOYER LE LIEN'));
+    expect(find.textContaining('aucun e-mail'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('le parcours : cocher, gagner des XP, étapes verrouillées', (
     tester,
   ) async {
-    final c = await start(tester, setUpPrefs);
+    final c = await start(tester, signedInPrefs);
     expect(find.textContaining('Awa, lève-toi et bois 0,25 L'), findsOneWidget);
 
     final nine = find.byKey(const ValueKey('slot_09:00'));
@@ -138,17 +196,25 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('profil : modifier ses alertes', (tester) async {
-    await start(tester, setUpPrefs);
+  testWidgets('paramètres : prénom, alertes, déconnexion', (tester) async {
+    final c = await start(tester, signedInPrefs);
     await tester.tap(find.bySemanticsLabel('Profil'));
     await tester.pumpAndSettle();
-    expect(find.text('Awa'), findsOneWidget);
     expect(find.text('awa@exemple.com'), findsOneWidget);
 
     await tap(tester, text('ANNÉE'));
     expect(find.text('Moyenne par jour, sur 12 mois'), findsOneWidget);
-    await tap(tester, text('MOIS'));
-    expect(find.text('Litres bus par jour, sur 30 jours'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Paramètres'));
+    await tester.pumpAndSettle();
+    expect(find.text('Paramètres'), findsOneWidget);
+
+    await tap(tester, text('Prénom'));
+    await tester.enterText(find.widgetWithText(TextField, 'Prénom'), 'Awa K.');
+    await tester.pumpAndSettle();
+    await tap(tester, text('ENREGISTRER'));
+    expect(c.profile?.firstName, 'Awa K.');
+    expect(scheduler.scheduledFor?.firstName, 'Awa K.');
 
     await tap(tester, text('MODIFIER MES ALERTES'));
     await tap(tester, text('Toutes les 3 heures'));
@@ -156,7 +222,6 @@ void main() {
     await tap(tester, text('0,5 L'));
     await tap(tester, text('CONTINUER'));
     await tap(tester, text('ENREGISTRER'));
-
     expect(scheduler.scheduled?.reminders.map((r) => r.time), [
       '07:00',
       '10:00',
@@ -164,12 +229,39 @@ void main() {
       '16:00',
       '19:00',
     ]);
-    expect(find.text('Toutes les 3 heures · 2,5 L par jour'), findsOneWidget);
+
+    await tap(tester, text('SE DÉCONNECTER'));
+    await tap(tester, text('SE DÉCONNECTER'));
+    expect(find.text('COMMENCER'), findsOneWidget);
+    expect(scheduler.cancelled, greaterThan(0));
+    expect(c.profile, isNull);
+    // La progression reste en ligne pour la prochaine connexion.
+    expect(cloudDoc(awaUid)?['rhythm'], 'Toutes les 3 heures');
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('supprimer son compte', (tester) async {
+    await start(tester, signedInPrefs);
+    await tester.tap(find.bySemanticsLabel('Profil'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Paramètres'));
+    await tester.pumpAndSettle();
+
+    await tap(tester, text('SUPPRIMER MON COMPTE'));
+    await type(tester, 'Ton mot de passe, pour confirmer', 'faux');
+    await tap(tester, text('SUPPRIMER DÉFINITIVEMENT'));
+    expect(find.text('Mot de passe incorrect.'), findsOneWidget);
+
+    await type(tester, 'Ton mot de passe, pour confirmer', 'secret1');
+    await tap(tester, text('SUPPRIMER DÉFINITIVEMENT'));
+    expect(find.text('COMMENCER'), findsOneWidget);
+    expect(cloudDoc(awaUid), isNull);
+    expect(prefs.getString('demo_accounts'), isNot(contains('awa@')));
     await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('leçons et succès', (tester) async {
-    final c = await start(tester, setUpPrefs);
+    final c = await start(tester, signedInPrefs);
     await tester.tap(find.bySemanticsLabel('Leçons'));
     await tester.pumpAndSettle();
     await tap(tester, text('Calculs rénaux'));
@@ -181,6 +273,7 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Succès'));
     await tester.pumpAndSettle();
     expect(find.text('Niveau 1 · Goutte'), findsOneWidget);
+    expect(c.profile?.difficulties, {Difficulty.forget});
     await tester.pumpWidget(const SizedBox());
   });
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import 'data/hydration_store.dart';
@@ -5,7 +7,9 @@ import 'data/kidney_tips.dart';
 import 'models/game.dart';
 import 'models/plan.dart';
 import 'models/profile.dart';
+import 'services/auth_service.dart';
 import 'services/reminder_scheduler.dart';
+import 'services/user_repository.dart';
 
 enum SlotState { done, current, missed, locked }
 
@@ -24,23 +28,25 @@ class HydrationController extends ChangeNotifier {
   HydrationController({
     required HydrationStore store,
     required this.scheduler,
+    this.cloud,
     DateTime Function()? clock,
   })  : _store = store,
         _clock = clock ?? DateTime.now {
-    _profile = store.profile;
-    _plan = store.plan;
-    _stats = store.stats;
-    _loadDay();
+    _loadAll();
     if (isSetUp) store.markFirstDay(_day);
   }
 
   final HydrationStore _store;
   final ReminderScheduler scheduler;
+
+  /// Sauvegarde en ligne ; null dans les tests qui n'en ont pas besoin.
+  final UserRepository? cloud;
   final DateTime Function() _clock;
 
   UserProfile? _profile;
   HydrationPlan? _plan;
   late GameStats _stats;
+  String? _uid;
   late DateTime _day;
   late Map<int, int> _checks;
   late int _streak;
@@ -83,6 +89,88 @@ class HydrationController extends ChangeNotifier {
     if (index == currentIndex) return SlotState.current;
     final m = now().hour * 60 + now().minute;
     return m >= r.minutes ? SlotState.missed : SlotState.locked;
+  }
+
+  /// Connexion : récupère la sauvegarde en ligne si le téléphone ne contient
+  /// pas déjà les données de ce compte.
+  Future<void> onSignedIn(AppUser user) async {
+    _uid = user.uid;
+    if (_store.ownerUid != user.uid) {
+      await scheduler.cancelAll();
+      Map<String, dynamic>? remote;
+      try {
+        remote = await cloud?.load(user.uid);
+      } catch (e) {
+        debugPrint('Sauvegarde en ligne indisponible : $e');
+      }
+      final data = remote?['data'];
+      if (data is Map) {
+        await _store.importData(Map<String, dynamic>.from(data));
+      } else if (_store.ownerUid != null) {
+        // Données d'un autre compte : on repart de zéro.
+        await _store.clearUserData();
+      }
+      // Sinon, données d'avant la connexion : on les garde pour ce compte.
+      await _store.setOwner(user.uid);
+      _loadAll();
+      final plan = _plan;
+      if (plan != null) await scheduler.scheduleAll(plan, _profile);
+      if (data is! Map) _push();
+    }
+    // Le prénom du compte fait foi (il peut changer dans les paramètres).
+    final profile = _profile;
+    final name = user.firstName;
+    if (profile != null && name != null && name != profile.firstName) {
+      await saveProfile(profile.copyWith(firstName: name, email: user.email));
+    }
+    notifyListeners();
+  }
+
+  /// Déconnexion : le téléphone oublie tout et ne sonne plus.
+  Future<void> onSignedOut() async {
+    _uid = null;
+    await scheduler.cancelAll();
+    await _store.clearUserData();
+    _loadAll();
+    notifyListeners();
+  }
+
+  /// Change le prénom affiché et dans les alertes.
+  Future<void> renameTo(String firstName) async {
+    final profile = _profile;
+    if (profile == null) return;
+    await saveProfile(profile.copyWith(firstName: firstName));
+    final plan = _plan;
+    if (plan != null) await scheduler.scheduleAll(plan, _profile);
+  }
+
+  /// Supprime la sauvegarde en ligne (avant de supprimer le compte).
+  Future<void> deleteCloudData() async {
+    final uid = _uid;
+    if (uid != null) await cloud?.delete(uid);
+  }
+
+  /// Envoie l'état actuel en ligne, sans bloquer l'écran.
+  void _push() {
+    final uid = _uid;
+    final repo = cloud;
+    if (uid == null || repo == null) return;
+    final profile = _profile;
+    unawaited(
+      repo.save(uid, {
+        'firstName': profile?.firstName,
+        'email': profile?.email,
+        'usualIntake': profile?.usualIntake.label,
+        'difficulties': [
+          for (final d in profile?.difficulties ?? const <Difficulty>{})
+            d.label,
+        ],
+        'rhythm': _plan?.rhythm.label,
+        'dailyGoalMl': _plan?.goalMl,
+        'xp': xp,
+        'data': _store.exportData(),
+      }).catchError((Object e) => debugPrint('Sauvegarde en ligne : $e')),
+    );
   }
 
   /// Litres bus chaque jour, des [count] derniers jours jusqu'à aujourd'hui.
@@ -137,6 +225,7 @@ class HydrationController extends ChangeNotifier {
     notifyListeners();
     await _store.saveProfile(profile);
     await _store.markFirstDay(_day);
+    _push();
   }
 
   /// Enregistre les alertes et les programme sur le téléphone.
@@ -145,6 +234,7 @@ class HydrationController extends ChangeNotifier {
     _streak = _store.streak(_day, plan.streakMinChecks);
     notifyListeners();
     await _store.savePlan(plan);
+    _push();
     await scheduler.requestPermission();
     await scheduler.scheduleAll(plan, _profile);
   }
@@ -193,6 +283,7 @@ class HydrationController extends ChangeNotifier {
     }
     await _store.saveStats(_stats);
     notifyListeners();
+    _push();
     final oldLevel = levelFor(before.xp);
     return Reward(
       xp: _stats.xp - before.xp,
@@ -216,6 +307,13 @@ class HydrationController extends ChangeNotifier {
         Achievement.liters50 => _stats.totalMl >= 50000,
         Achievement.allTips => _stats.readTips.length == kidneyTips.length,
       };
+
+  void _loadAll() {
+    _profile = _store.profile;
+    _plan = _store.plan;
+    _stats = _store.stats;
+    _loadDay();
+  }
 
   void _loadDay() {
     _day = _today();

@@ -11,6 +11,13 @@ class UserProfile {
   final String email;
   final UsualIntake usualIntake;
   final Set<Difficulty> difficulties;
+
+  UserProfile copyWith({String? firstName, String? email}) => UserProfile(
+        firstName: firstName ?? this.firstName,
+        email: email ?? this.email,
+        usualIntake: usualIntake,
+        difficulties: difficulties,
+      );
 }
 
 enum UsualIntake {

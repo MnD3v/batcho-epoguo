@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:bois_et_vis/models/plan.dart';
 import 'package:bois_et_vis/models/profile.dart';
 import 'package:bois_et_vis/services/reminder_scheduler.dart';
@@ -6,6 +8,7 @@ class FakeScheduler implements ReminderScheduler {
   HydrationPlan? scheduled;
   UserProfile? scheduledFor;
   int permissionRequests = 0;
+  int cancelled = 0;
 
   @override
   Future<void> init() async {}
@@ -24,6 +27,12 @@ class FakeScheduler implements ReminderScheduler {
 
   @override
   Future<void> showTest(Reminder reminder, UserProfile? profile) async {}
+
+  @override
+  Future<void> cancelAll() async {
+    cancelled++;
+    scheduled = null;
+  }
 }
 
 /// Awa, déjà inscrite, alertes toutes les 2 h de 0,25 L.
@@ -42,4 +51,25 @@ const setUpPrefs = <String, Object>{
     '1020:250',
     '1140:250',
   ],
+};
+
+const awaUid = 'demo-awa';
+
+/// Le compte démo d'Awa (mot de passe « secret1 »).
+final awaAccount = <String, Object>{
+  'demo_accounts': jsonEncode({
+    awaUid: {
+      'email': 'awa@exemple.com',
+      'password': 'secret1',
+      'firstName': 'Awa',
+    },
+  }),
+};
+
+/// Awa connectée, avec ses alertes sur le téléphone.
+final signedInPrefs = <String, Object>{
+  ...setUpPrefs,
+  ...awaAccount,
+  'demo_current_uid': awaUid,
+  'owner_uid': awaUid,
 };

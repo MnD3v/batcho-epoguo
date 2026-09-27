@@ -73,6 +73,16 @@ class HydrationStore {
   static const _readTipsKey = 'stats_read_tips';
   static const _badgesKey = 'stats_badges';
   static const _firstDayKey = 'first_day';
+  static const _ownerKey = 'owner_uid';
+
+  /// Clés qui appartiennent à la personne connectée (sauvegardées en ligne).
+  static const _userPrefixes = [
+    'profile_',
+    'plan_',
+    'checks_',
+    'stats_',
+    _firstDayKey,
+  ];
 
   UserProfile? get profile {
     final firstName = _prefs.getString(_firstNameKey);
@@ -90,6 +100,46 @@ class HydrationStore {
           ...Difficulty.values.where((d) => d.name == name),
       },
     );
+  }
+
+  /// Compte à qui appartiennent les données du téléphone.
+  String? get ownerUid => _prefs.getString(_ownerKey);
+
+  Future<void> setOwner(String uid) => _prefs.setString(_ownerKey, uid);
+
+  Iterable<String> get _userKeys =>
+      _prefs.getKeys().where((k) => _userPrefixes.any(k.startsWith));
+
+  /// Toutes les données de la personne, pour la sauvegarde en ligne.
+  Map<String, Object> exportData() => {
+        for (final key in _userKeys)
+          if (_prefs.get(key) case final Object value) key: value,
+      };
+
+  /// Remplace les données du téléphone par une sauvegarde.
+  Future<void> importData(Map<String, dynamic> data) async {
+    await clearUserData();
+    for (final MapEntry(:key, :value) in data.entries) {
+      if (!_userPrefixes.any(key.startsWith)) continue;
+      switch (value) {
+        case int v:
+          await _prefs.setInt(key, v);
+        case String v:
+          await _prefs.setString(key, v);
+        case bool v:
+          await _prefs.setBool(key, v);
+        case List<dynamic> v:
+          await _prefs.setStringList(key, [for (final e in v) '$e']);
+      }
+    }
+  }
+
+  /// Efface les données de la personne (déconnexion, suppression du compte).
+  Future<void> clearUserData() async {
+    for (final key in _userKeys.toList()) {
+      await _prefs.remove(key);
+    }
+    await _prefs.remove(_ownerKey);
   }
 
   /// Premier jour d'utilisation : les courbes ne montrent rien avant.

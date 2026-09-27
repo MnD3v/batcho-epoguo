@@ -8,7 +8,11 @@ Application Flutter (Android et iOS) qui rappelle de boire de l'eau **toutes les
 Design façon jeu (style Duolingo) : couleurs vives, boutons en relief, police **Plus Jakarta Sans**,
 et **Reno**, le rein mascotte, qui guide et encourage.
 
-- **Premier lancement, une question par écran** : prénom et e-mail, quantité d'eau bue par jour
+- **Compte** : accueil, inscription (prénom, e-mail, mot de passe), connexion, mot de passe oublié.
+  La progression est sauvegardée en ligne et retrouvée sur un autre téléphone.
+- **Paramètres** : changer son prénom, modifier ses alertes, faire sonner un essai, se déconnecter,
+  supprimer son compte.
+- **Après l'inscription, une question par écran** : prénom et e-mail, quantité d'eau bue par jour
   (moins de 1 L, environ 1,5 L, environ 2 L, plus de 2 L), difficultés (oubli, pas envie, pas d'eau
   à côté, trop occupé), puis les alertes.
 - **Alertes** : toutes les 2 h ou toutes les 3 h (de 7h à 20h), ou à des heures précises avec la
@@ -23,7 +27,26 @@ et **Reno**, le rein mascotte, qui guide et encourage.
   (moyenne par jour, mois par mois), avec l'objectif en pointillés ; toucher la courbe pour lire une valeur.
 - **Badges**, **leçons illustrées** sur les reins et **profil** (statistiques, modifier ses alertes).
 
-Les données restent sur le téléphone (`shared_preferences`), rien n'est envoyé en ligne.
+Les données sont gardées sur le téléphone (`shared_preferences`) et sauvegardées dans Firestore,
+dans `users/{uid}` : prénom, e-mail, réponses au questionnaire en clair (lisibles dans la console
+Firebase), et toute la progression dans `data`.
+
+## Brancher Firebase
+
+Tant que Firebase n'est pas configuré, l'appli tourne en **mode démo** : les comptes restent sur le
+téléphone (mention « Mode démo » sur l'accueil). Pour passer en vrai :
+
+1. Dans la [console Firebase](https://console.firebase.google.com), créer le projet, puis activer
+   **Authentication → E-mail/Mot de passe** et **Firestore Database**.
+2. Installer les outils et générer les clés (remplace `lib/firebase_options.dart`) :
+   ```bash
+   dart pub global activate flutterfire_cli
+   flutterfire configure --platforms=android,ios
+   ```
+3. Publier les règles de sécurité de `firestore.rules` (console Firestore → Règles, ou
+   `firebase deploy --only firestore:rules`).
+
+Aucune modification Gradle n'est nécessaire : les clés sont lues depuis `lib/firebase_options.dart`.
 
 ## Lancer le projet
 
@@ -39,9 +62,10 @@ flutter test
 | --- | --- |
 | `lib/models/` | Profil, alertes (`plan.dart`), XP, niveaux et badges (`game.dart`) |
 | `lib/data/` | Conseils sur les reins, sauvegarde locale |
-| `lib/services/` | Programmation des alertes |
+| `lib/services/` | Alertes, connexion (Firebase ou démo), sauvegarde en ligne |
+| `lib/app_root.dart` | Choix de l'écran : accueil, questionnaire ou appli |
 | `lib/theme/duo.dart`, `lib/widgets/` | Couleurs, police, boutons en relief, mascotte, écrans de victoire |
-| `lib/screens/` | Questionnaire, parcours, leçons, succès, profil |
+| `lib/screens/` | Connexion, questionnaire, parcours, leçons, succès, profil, paramètres |
 | `assets/` | Dessins SVG, police Plus Jakarta Sans (licence OFL), icône |
 | `tool/generate_illustrations.py` | Script qui génère les dessins SVG et l'icône |
 

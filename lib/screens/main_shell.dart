@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../hydration_controller.dart';
+import '../services/auth_service.dart';
 import '../theme/duo.dart';
 import 'badges_screen.dart';
 import 'lessons_screen.dart';
@@ -10,9 +11,10 @@ import 'profile_screen.dart';
 
 /// Écran principal avec la barre d'onglets du bas.
 class MainShell extends StatefulWidget {
-  const MainShell({super.key, required this.controller});
+  const MainShell({super.key, required this.controller, required this.auth});
 
   final HydrationController controller;
+  final AuthService auth;
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -38,7 +40,7 @@ class _MainShellState extends State<MainShell> {
           PathScreen(controller: c),
           LessonsScreen(controller: c),
           BadgesScreen(controller: c),
-          ProfileScreen(controller: c),
+          ProfileScreen(controller: c, auth: widget.auth),
         ],
       ),
       bottomNavigationBar: Container(
@@ -65,9 +67,8 @@ class _MainShellState extends State<MainShell> {
                           margin: const EdgeInsets.symmetric(horizontal: 6),
                           padding: const EdgeInsets.symmetric(vertical: 6),
                           decoration: BoxDecoration(
-                            color: i == _tab
-                                ? Duo.blueLight
-                                : Colors.transparent,
+                            color:
+                                i == _tab ? Duo.blueLight : Colors.transparent,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: i == _tab ? Duo.blue : Colors.transparent,

@@ -22,6 +22,9 @@ abstract class ReminderScheduler {
 
   /// Fait sonner tout de suite une alerte d'essai.
   Future<void> showTest(Reminder reminder, UserProfile? profile);
+
+  /// Arrête toutes les alertes (déconnexion).
+  Future<void> cancelAll();
 }
 
 class LocalNotificationScheduler implements ReminderScheduler {
@@ -106,6 +109,9 @@ class LocalNotificationScheduler implements ReminderScheduler {
       }
     }
   }
+
+  @override
+  Future<void> cancelAll() => _plugin.cancelAll();
 
   @override
   Future<void> showTest(Reminder reminder, UserProfile? profile) async {

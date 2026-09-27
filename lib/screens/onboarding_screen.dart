@@ -5,24 +5,28 @@ import '../data/kidney_tips.dart';
 import '../hydration_controller.dart';
 import '../models/plan.dart';
 import '../models/profile.dart';
+import '../services/auth_service.dart';
 import '../services/reminder_scheduler.dart';
 import '../theme/duo.dart';
 import '../widgets/duo_widgets.dart';
-import 'main_shell.dart';
 
-enum _Step { welcome, identity, intake, difficulties, rhythm, amounts, ready }
+enum _Step { intake, difficulties, rhythm, amounts, ready }
 
-/// Premier lancement : Reno pose une question par écran, puis active les
-/// alertes. Depuis le profil, seules les étapes des alertes sont montrées.
+/// Après l'inscription : Reno pose une question par écran, puis active les
+/// alertes. Depuis les paramètres, seules les étapes des alertes sont montrées.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({
     super.key,
     required this.controller,
     required this.isFirstRun,
+    this.user,
   });
 
   final HydrationController controller;
   final bool isFirstRun;
+
+  /// Le compte qui vient d'être créé (prénom et e-mail).
+  final AppUser? user;
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -35,12 +39,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   int _index = 0;
   bool _saving = false;
 
-  late final _name = TextEditingController(
-    text: widget.controller.profile?.firstName,
-  );
-  late final _email = TextEditingController(
-    text: widget.controller.profile?.email,
-  );
+  late final String _firstName =
+      widget.user?.firstName ?? widget.controller.profile?.firstName ?? '';
+  late final String _email =
+      widget.user?.email ?? widget.controller.profile?.email ?? '';
   late UsualIntake? _intake = widget.controller.profile?.usualIntake;
   late final Set<Difficulty> _difficulties = {
     ...?widget.controller.profile?.difficulties,
@@ -49,13 +51,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       widget.controller.plan ?? _regularPlan(Rhythm.every2h);
 
   _Step get _step => _steps[_index];
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _email.dispose();
-    super.dispose();
-  }
 
   /// Quantité proposée pour boire environ 2 L dans la journée.
   static HydrationPlan _regularPlan(Rhythm rhythm) {
@@ -68,8 +63,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   bool get _canContinue => switch (_step) {
-        _Step.identity =>
-          _name.text.trim().isNotEmpty && isValidEmail(_email.text),
         _Step.intake => _intake != null,
         _Step.amounts => _plan.reminders.isNotEmpty,
         _ => true,
@@ -84,12 +77,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _next() async {
-    FocusScope.of(context).unfocus();
-    if (_step == _Step.identity || _step == _Step.difficulties) {
+    if (_step == _Step.difficulties) {
       await widget.controller.saveProfile(
         UserProfile(
-          firstName: _name.text.trim(),
-          email: _email.text.trim(),
+          firstName: _firstName,
+          email: _email,
           usualIntake: _intake ?? UsualIntake.about1_5L,
           difficulties: _difficulties,
         ),
@@ -101,16 +93,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
     setState(() => _saving = true);
     await widget.controller.savePlan(_plan);
-    if (!mounted) return;
-    if (widget.isFirstRun) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) => MainShell(controller: widget.controller),
-        ),
-      );
-    } else {
-      Navigator.of(context).pop();
-    }
+    // Au premier lancement, l'écran principal remplace celui-ci tout seul.
+    if (mounted && !widget.isFirstRun) Navigator.of(context).pop();
   }
 
   @override
@@ -159,8 +143,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                     children: switch (_step) {
-                      _Step.welcome => _welcome(),
-                      _Step.identity => _identity(),
                       _Step.intake => _intakeStep(),
                       _Step.difficulties => _difficultiesStep(),
                       _Step.rhythm => _rhythm(),
@@ -178,7 +160,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
               child: DuoButton(
                 label: switch (_step) {
-                  _Step.welcome => 'C\'est parti',
                   _Step.ready when widget.isFirstRun => 'Activer mes alertes',
                   _Step.ready => 'Enregistrer',
                   _ => 'Continuer',
@@ -192,61 +173,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  List<Widget> _welcome() => [
-        const SizedBox(height: 12),
-        Center(
-          child:
-              SvgPicture.asset('assets/mascot/mascot_cheer.svg', height: 210),
-        ),
-        const SizedBox(height: 20),
-        const Text(
-          'Salut ! Moi, c\'est Reno,\nton rein.',
-          textAlign: TextAlign.center,
-          style: Duo.title,
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          'Réponds à 4 petites questions et je sonnerai quand il faut boire.',
-          textAlign: TextAlign.center,
-          style: Duo.body,
-        ),
-        const SizedBox(height: 24),
-        const Text(
-          healthDisclaimer,
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: Duo.gray, height: 1.4),
-        ),
-      ];
-
-  List<Widget> _identity() => [
-        const MascotSays(
-            text: 'Faisons connaissance ! Comment tu t\'appelles ?'),
-        const SizedBox(height: 20),
-        _Field(
-          controller: _name,
-          label: 'Prénom',
-          hint: 'Ex. Awa',
-          keyboard: TextInputType.name,
-          capitalization: TextCapitalization.words,
-          onChanged: () => setState(() {}),
-        ),
-        const SizedBox(height: 12),
-        _Field(
-          controller: _email,
-          label: 'E-mail',
-          hint: 'awa@exemple.com',
-          keyboard: TextInputType.emailAddress,
-          onChanged: () => setState(() {}),
-          error: _email.text.isNotEmpty && !isValidEmail(_email.text)
-              ? 'Adresse e-mail invalide'
-              : null,
-        ),
-      ];
-
   List<Widget> _intakeStep() => [
         MascotSays(
-          text: 'Enchanté, ${_name.text.trim()} ! Combien d\'eau bois-tu par '
-              'jour, en moyenne ?',
+          text: 'Bienvenue, $_firstName ! Combien d\'eau bois-tu par jour, '
+              'en moyenne ?',
         ),
         const SizedBox(height: 20),
         for (final intake in UsualIntake.values)
@@ -446,7 +376,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   List<Widget> _ready() {
-    final name = widget.controller.profile?.firstName ?? _name.text.trim();
+    final name = _firstName;
     return [
       MascotSays(
         pose: 'mascot_cheer',
@@ -529,56 +459,6 @@ class _GoalCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(advice, style: Duo.body.copyWith(fontSize: 14)),
         ],
-      ),
-    );
-  }
-}
-
-class _Field extends StatelessWidget {
-  const _Field({
-    required this.controller,
-    required this.label,
-    required this.hint,
-    required this.keyboard,
-    required this.onChanged,
-    this.capitalization = TextCapitalization.none,
-    this.error,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final String hint;
-  final TextInputType keyboard;
-  final VoidCallback onChanged;
-  final TextCapitalization capitalization;
-  final String? error;
-
-  @override
-  Widget build(BuildContext context) {
-    OutlineInputBorder border(Color color) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: color, width: 2),
-        );
-    return TextField(
-      controller: controller,
-      keyboardType: keyboard,
-      textCapitalization: capitalization,
-      autocorrect: false,
-      onChanged: (_) => onChanged(),
-      style: Duo.heading.copyWith(fontSize: 17),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        errorText: error,
-        filled: true,
-        fillColor: Duo.snow,
-        labelStyle: Duo.body,
-        hintStyle: Duo.body.copyWith(color: Duo.gray),
-        border: border(Duo.border),
-        enabledBorder: border(Duo.border),
-        focusedBorder: border(Duo.blue),
-        errorBorder: border(Duo.red),
-        focusedErrorBorder: border(Duo.red),
       ),
     );
   }

@@ -3,17 +3,23 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../data/kidney_tips.dart';
 import '../hydration_controller.dart';
+import '../services/auth_service.dart';
 import '../models/plan.dart';
 import '../theme/duo.dart';
 import '../widgets/duo_widgets.dart';
 import '../widgets/evolution_chart.dart';
-import 'onboarding_screen.dart';
+import 'settings_screen.dart';
 
 /// Statistiques et réglages des alertes.
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key, required this.controller});
+  const ProfileScreen({
+    super.key,
+    required this.controller,
+    required this.auth,
+  });
 
   final HydrationController controller;
+  final AuthService auth;
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +61,20 @@ class ProfileScreen extends StatelessWidget {
                           style: Duo.body.copyWith(color: Duo.goldDark),
                         ),
                       ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Paramètres',
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) =>
+                            SettingsScreen(controller: controller, auth: auth),
+                      ),
+                    ),
+                    icon: const Icon(
+                      Icons.settings_rounded,
+                      color: Duo.gray,
+                      size: 30,
                     ),
                   ),
                 ],
@@ -129,36 +149,6 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 14),
-              DuoButton(
-                label: 'Modifier mes alertes',
-                color: Duo.blue,
-                shadow: Duo.blueDark,
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => OnboardingScreen(
-                      controller: controller,
-                      isFirstRun: false,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              DuoButton.outline(
-                label: 'Faire sonner un essai',
-                icon: Icons.notifications_active_rounded,
-                onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  await controller.scheduler.requestPermission();
-                  await controller.scheduler.showTest(
-                    plan.reminders.first,
-                    profile,
-                  );
-                  messenger.showSnackBar(
-                    const SnackBar(content: Text('Alerte d\'essai envoyée')),
-                  );
-                },
               ),
               const SizedBox(height: 24),
               const Text(
