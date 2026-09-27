@@ -1,6 +1,8 @@
+import 'dart:math' as math;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../data/kidney_tips.dart';
@@ -33,9 +35,22 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
   /// Décalage horizontal de chaque étape, pour dessiner le chemin.
   static const _zigzag = [0.0, 0.45, 0.7, 0.45, 0.0, -0.45, -0.7];
 
+  /// Étape à faire : la liste y glisse à l'ouverture.
+  final _focusKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = _focusKey.currentContext;
+      if (target == null || !mounted || !Motion.enabled(context)) return;
+      Scrollable.ensureVisible(
+        target,
+        alignment: 0.4,
+        duration: const Duration(milliseconds: 900),
+        curve: Curves.easeInOutCubic,
+      );
+    });
     WidgetsBinding.instance.addObserver(this);
     // Met à jour l'étape en cours chaque minute.
     _ticker = Timer.periodic(const Duration(minutes: 1), (_) => _refresh());
@@ -228,23 +243,60 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
     const node = 76.0;
     final amplitude = (width - node) / 2 - 24;
     final reminders = _c.reminders;
+    // Reno se poste à côté de l'étape à faire, comme dans Duolingo.
+    final (mascotAt, pose) = _mascotStep();
     return Column(
       children: [
         for (var i = 0; i < reminders.length; i++)
-          Transform.translate(
-            offset: Offset(_zigzag[i % _zigzag.length] * amplitude, 0),
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 18),
-              child: _PathNode(
-                reminder: reminders[i],
-                state: _c.slotState(i),
-                onTap: () => _onTapSlot(i),
-              ),
+          Padding(
+            key: i == mascotAt ? _focusKey : null,
+            padding: const EdgeInsets.only(bottom: 18),
+            child: Stack(
+              alignment: Alignment.topCenter,
+              clipBehavior: Clip.none,
+              children: [
+                Transform.translate(
+                  offset: Offset(_zigzag[i % _zigzag.length] * amplitude, 0),
+                  child: _PathNode(
+                    index: i,
+                    reminder: reminders[i],
+                    state: _c.slotState(i),
+                    onTap: () => _onTapSlot(i),
+                  ),
+                ),
+                if (i == mascotAt)
+                  Transform.translate(
+                    offset: Offset(
+                      _zigzag[i % _zigzag.length] > 0
+                          ? _zigzag[i % _zigzag.length] * amplitude - 120
+                          : _zigzag[i % _zigzag.length] * amplitude + 120,
+                      36,
+                    ),
+                    child: AnimatedMascot(
+                      pose: pose,
+                      size: 72,
+                      onTap: () => _onTapSlot(i),
+                    ),
+                  ),
+              ],
             ),
           ),
         _GoalChest(reached: _c.goalReached),
       ],
     );
+  }
+
+  /// Étape où se poste Reno : celle de l'heure, sinon la dernière oubliée,
+  /// sinon la prochaine.
+  (int?, String) _mascotStep() {
+    final current = _c.currentIndex;
+    if (current != null && !_c.isChecked(_c.reminders[current])) {
+      return (current, 'mascot_drink');
+    }
+    for (var i = _c.reminders.length - 1; i >= 0; i--) {
+      if (_c.slotState(i) == SlotState.missed) return (i, 'mascot_sad');
+    }
+    return (_c.nextIndex, 'mascot_happy');
   }
 }
 
@@ -602,19 +654,70 @@ class _DayBanner extends StatelessWidget {
   }
 }
 
-class _PathNode extends StatelessWidget {
+/// Étape du parcours, animée façon Duolingo : apparition en cascade,
+/// halo et bulle qui flotte quand c'est l'heure, bouton qui s'enfonce,
+/// explosion d'étoiles quand c'est bu, tremblement si c'est verrouillé.
+class _PathNode extends StatefulWidget {
   const _PathNode({
+    required this.index,
     required this.reminder,
     required this.state,
     required this.onTap,
   });
 
+  final int index;
   final Reminder reminder;
   final SlotState state;
   final VoidCallback onTap;
 
   @override
+  State<_PathNode> createState() => _PathNodeState();
+}
+
+class _PathNodeState extends State<_PathNode> with TickerProviderStateMixin {
+  static const _size = 76.0;
+  static const _depth = 7.0;
+
+  late final _burst = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  );
+  late final _shake = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 500),
+  );
+  bool _down = false;
+
+  @override
+  void didUpdateWidget(_PathNode old) {
+    super.didUpdateWidget(old);
+    // Vient d'être bu : explosion d'étoiles.
+    if (old.state != SlotState.done && widget.state == SlotState.done) {
+      _burst.forward(from: 0);
+    }
+    // Vient de s'ouvrir : le cadenas saute.
+    if (old.state == SlotState.locked && widget.state != SlotState.locked) {
+      _shake.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _burst.dispose();
+    _shake.dispose();
+    super.dispose();
+  }
+
+  void _tap() {
+    if (widget.state == SlotState.locked) _shake.forward(from: 0);
+    HapticFeedback.lightImpact();
+    widget.onTap();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
+    final reminder = widget.reminder;
     final (color, shadow, status) = switch (state) {
       SlotState.done => (Duo.gold, Duo.goldDark, 'Bu !'),
       SlotState.current => (Duo.green, Duo.greenDark, 'C\'est l\'heure'),
@@ -622,8 +725,10 @@ class _PathNode extends StatelessWidget {
       SlotState.locked => (Duo.border, const Color(0xFFCECECE), 'Verrouillé'),
     };
     final icon = switch (state) {
-      SlotState.done => const PopIn(
-          child: Icon(Icons.check_rounded, color: Colors.white, size: 42),
+      SlotState.done => const Icon(
+          Icons.check_rounded,
+          color: Colors.white,
+          size: 42,
         ),
       SlotState.locked => SvgPicture.asset(
           'assets/icons/lock.svg',
@@ -643,69 +748,196 @@ class _PathNode extends StatelessWidget {
           ),
         ),
     };
+    final isCurrent = state == SlotState.current;
+    final press = _down ? _depth - 2 : 0.0;
+
+    final circle = AnimatedContainer(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOut,
+      width: _size,
+      height: _size - 6,
+      margin: EdgeInsets.only(top: press, bottom: _depth - press),
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(color: shadow, offset: Offset(0, _depth - press))
+        ],
+      ),
+      alignment: Alignment.center,
+      // Nouvelle icône (coche, verre, cadenas) avec un rebond.
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 450),
+        transitionBuilder: (child, animation) => ScaleTransition(
+          scale: CurvedAnimation(parent: animation, curve: Curves.elasticOut),
+          child: child,
+        ),
+        child: KeyedSubtree(key: ValueKey(state), child: icon),
+      ),
+    );
+
+    final node = SizedBox(
+      width: _size * 1.9,
+      height: _size + _depth + 4,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        clipBehavior: Clip.none,
+        children: [
+          // Halo qui s'élargit autour de l'étape en cours.
+          if (isCurrent)
+            LoopBuilder(
+              duration: const Duration(milliseconds: 1800),
+              builder: (context, t, _) => Transform.scale(
+                scale: 1 + 0.55 * t,
+                child: Opacity(
+                  opacity: (1 - t) * 0.45,
+                  child: Container(
+                    width: _size,
+                    height: _size - 6,
+                    decoration: const BoxDecoration(
+                      color: Duo.green,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          Pulse(amount: isCurrent ? 0.05 : 0, child: circle),
+          // Étoiles quand l'alerte vient d'être bue.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedBuilder(
+                animation: _burst,
+                builder: (context, _) => _burst.isAnimating
+                    ? CustomPaint(painter: _StarBurstPainter(_burst.value))
+                    : const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
     return Semantics(
       button: true,
       label: '${reminder.time}, $status',
       excludeSemantics: true,
       child: GestureDetector(
         key: ValueKey('slot_${reminder.time}'),
-        onTap: onTap,
-        child: Column(
-          children: [
-            if (state == SlotState.current)
-              Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Duo.border, width: 2),
-                ),
-                child: Text(
-                  'BOIS !',
-                  style: Duo.label.copyWith(color: Duo.green, fontSize: 14),
-                ),
+        onTapDown: (_) => setState(() => _down = true),
+        onTapCancel: () => setState(() => _down = false),
+        onTapUp: (_) => setState(() => _down = false),
+        onTap: _tap,
+        // Apparition en cascade, étape après étape.
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: Duration(milliseconds: 450 + widget.index * 110),
+          curve: Interval(
+            (widget.index * 110) / (450 + widget.index * 110),
+            1,
+            curve: Curves.elasticOut,
+          ),
+          builder: (context, appear, child) => Opacity(
+            opacity: appear.clamp(0.0, 1.0),
+            child: Transform.scale(scale: 0.4 + 0.6 * appear, child: child),
+          ),
+          child: AnimatedBuilder(
+            animation: _shake,
+            builder: (context, child) => Transform.translate(
+              offset: Offset(
+                math.sin(_shake.value * math.pi * 6) * 9 * (1 - _shake.value),
+                0,
               ),
-            Pulse(
-              // Seule l'étape en cours bat, pour attirer le doigt.
-              amount: state == SlotState.current ? 0.07 : 0,
-              child: Container(
-                width: 76,
-                height: 70,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(color: shadow, offset: const Offset(0, 7)),
-                  ],
-                ),
-                alignment: Alignment.center,
-                child: icon,
-              ),
+              child: child,
             ),
-            const SizedBox(height: 10),
-            Text(
-              '${reminder.time} · ${formatLiters(reminder.ml)}',
-              style: Duo.heading.copyWith(
-                fontSize: 16,
-                color: state == SlotState.locked ? Duo.gray : Duo.text,
-              ),
+            child: Column(
+              children: [
+                if (isCurrent)
+                  // La bulle « BOIS ! » flotte au-dessus de l'étape.
+                  LoopBuilder(
+                    duration: const Duration(milliseconds: 1600),
+                    builder: (context, t, child) => Transform.translate(
+                      offset: Offset(0, -4 * math.sin(2 * math.pi * t)),
+                      child: child,
+                    ),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Duo.border, width: 2),
+                      ),
+                      child: Text(
+                        'BOIS !',
+                        style: Duo.label.copyWith(
+                          color: Duo.green,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                node,
+                const SizedBox(height: 4),
+                Text(
+                  '${reminder.time} · ${formatLiters(reminder.ml)}',
+                  style: Duo.heading.copyWith(
+                    fontSize: 16,
+                    color: state == SlotState.locked ? Duo.gray : Duo.text,
+                  ),
+                ),
+                Text(
+                  status,
+                  style: Duo.body.copyWith(
+                    fontSize: 13,
+                    color: state == SlotState.locked ? Duo.gray : shadow,
+                  ),
+                ),
+              ],
             ),
-            Text(
-              status,
-              style: Duo.body.copyWith(
-                fontSize: 13,
-                color: state == SlotState.locked ? Duo.gray : shadow,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
+}
+
+/// Étoiles et gouttes qui jaillissent autour d'une étape bue.
+class _StarBurstPainter extends CustomPainter {
+  _StarBurstPainter(this.t);
+
+  final double t;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, 35);
+    final fade = (1 - t).clamp(0.0, 1.0);
+    for (var i = 0; i < 10; i++) {
+      final angle = i * 2 * math.pi / 10;
+      final distance = 30 + 45 * Curves.easeOut.transform(t);
+      final p = center + Offset(math.cos(angle), math.sin(angle)) * distance;
+      final paint = Paint()
+        ..color = (i.isEven ? Duo.gold : Duo.blue).withValues(alpha: fade);
+      if (i.isEven) {
+        final star = Path();
+        for (var k = 0; k < 10; k++) {
+          final r = (k.isEven ? 7.0 : 3.0) * (1 - t * 0.4);
+          final a = -math.pi / 2 + k * math.pi / 5;
+          final q = p + Offset(math.cos(a) * r, math.sin(a) * r);
+          k == 0 ? star.moveTo(q.dx, q.dy) : star.lineTo(q.dx, q.dy);
+        }
+        canvas.drawPath(star..close(), paint);
+      } else {
+        canvas.drawCircle(p, 4 * (1 - t * 0.5), paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_StarBurstPainter old) => old.t != t;
 }
 
 class _GoalChest extends StatelessWidget {
