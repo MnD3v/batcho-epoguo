@@ -1,4 +1,4 @@
-package com.boisetvis.bois_et_vis
+package com.equilibre.boisetvis
 
 import io.flutter.embedding.android.FlutterActivity
 
