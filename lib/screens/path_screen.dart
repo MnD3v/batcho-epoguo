@@ -7,9 +7,11 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../data/kidney_tips.dart';
 import '../hydration_controller.dart';
+import '../models/mood.dart';
 import '../models/city.dart';
 import '../models/plan.dart';
 import '../theme/duo.dart';
+import '../services/read_aloud.dart';
 import '../services/auth_service.dart';
 import '../widgets/account_prompt.dart';
 import '../widgets/duo_widgets.dart';
@@ -174,6 +176,8 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                   children: [
+                    _MoodCard(mood: _c.mood, text: _mascotText()),
+                    const SizedBox(height: 16),
                     _DayBanner(controller: _c),
                     const SizedBox(height: 16),
                     _HeatCard(controller: _c),
@@ -181,8 +185,6 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
                       _FrozenNotice(controller: _c),
                       const SizedBox(height: 16),
                     ],
-                    _mascot(),
-                    const SizedBox(height: 12),
                     _ExtraDrinks(controller: _c, onDrink: _drinkExtra),
                     const SizedBox(height: 16),
                     LayoutBuilder(
@@ -199,7 +201,8 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _mascot() {
+  /// Ce que Reno conseille de faire maintenant.
+  String _mascotText() {
     final reminders = _c.reminders;
     final current = _c.currentIndex;
     final next = _c.nextIndex;
@@ -208,35 +211,24 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
       for (var i = 0; i < reminders.length; i++)
         if (_c.slotState(i) == SlotState.missed) i,
     ];
-    final (pose, text) = _c.goalReached
-        ? (
-            'mascot_cheer',
-            'Journée parfaite, $name ! Reviens demain pour garder ta flamme.',
-          )
-        : current != null && !_c.isChecked(reminders[current])
-            ? (
-                'mascot_drink',
-                '$name, lève-toi et bois ${formatLiters(reminders[current].ml)} ! '
-                    'Puis touche l\'étape de ${reminders[current].time}.',
-              )
-            : missed.isNotEmpty
-                ? (
-                    'mascot_sad',
-                    'Tu as oublié ${missed.length} alerte${missed.length > 1 ? 's' : ''}. '
-                        'Pas de panique, tu peux encore rattraper !',
-                  )
-                : next == 0
-                    ? (
-                        'mascot_happy',
-                        'Salut $name ! Première alerte à ${reminders[0].time}.',
-                      )
-                    : (
-                        'mascot_happy',
-                        next == null
-                            ? 'Bravo ! Rendez-vous demain à ${reminders[0].time}.'
-                            : 'Bravo ! Prochaine alerte à ${reminders[next].time}.',
-                      );
-    return MascotSays(pose: pose, text: text, size: 96, speakable: true);
+    if (_c.goalReached) {
+      return 'Journée parfaite, $name ! Reviens demain pour garder ta flamme.';
+    }
+    if (current != null && !_c.isChecked(reminders[current])) {
+      return '$name, lève-toi et bois ${formatLiters(reminders[current].ml)} ! '
+          'Puis touche l\'étape de ${reminders[current].time}.';
+    }
+    if (missed.isNotEmpty) {
+      return 'Tu as oublié ${missed.length} alerte'
+          '${missed.length > 1 ? 's' : ''}. '
+          'Pas de panique, tu peux encore rattraper !';
+    }
+    if (next == 0) {
+      return 'Salut $name ! Première alerte à ${reminders[0].time}.';
+    }
+    return next == null
+        ? 'Bravo ! Rendez-vous demain à ${reminders[0].time}.'
+        : 'Bravo ! Prochaine alerte à ${reminders[next].time}.';
   }
 
   Widget _path(double width) {
@@ -344,6 +336,119 @@ class _TopBar extends StatelessWidget {
             value: '${c.xp}',
             color: Duo.blue,
             semanticLabel: '${c.xp} XP',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// En haut du parcours : le visage de Reno selon l'heure et l'eau bue, de
+/// très triste à très joyeux, avec son conseil du moment.
+class _MoodCard extends StatelessWidget {
+  const _MoodCard({required this.mood, required this.text});
+
+  final Mood mood;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final speech = '${mood.feeling} $text';
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      padding: const EdgeInsets.fromLTRB(12, 12, 8, 14),
+      decoration: BoxDecoration(
+        color: Color.lerp(Colors.white, mood.color, 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border(
+          top: BorderSide(color: mood.color, width: 2),
+          left: BorderSide(color: mood.color, width: 2),
+          right: BorderSide(color: mood.color, width: 2),
+          bottom: BorderSide(color: mood.color, width: 5),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 500),
+                transitionBuilder: (child, animation) => ScaleTransition(
+                  scale: CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.elasticOut,
+                  ),
+                  child: child,
+                ),
+                child: AnimatedMascot(
+                  key: ValueKey(mood),
+                  pose: mood.pose,
+                  size: 116,
+                  onTap: () => ReadAloud.instance.speak(speech),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('RENO EST', style: Duo.label.copyWith(fontSize: 12)),
+                    Text(
+                      mood.label,
+                      key: const ValueKey('mood_label'),
+                      style: Duo.title.copyWith(
+                        color: mood.color,
+                        fontSize: 24,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      mood.feeling,
+                      style: Duo.heading.copyWith(fontSize: 15),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(text, style: Duo.body.copyWith(fontSize: 14)),
+                  ],
+                ),
+              ),
+              SpeakButton(text: speech),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // L'échelle des humeurs : le visage du moment ressort.
+          Row(
+            children: [
+              for (final m in Mood.values)
+                Expanded(
+                  child: AnimatedScale(
+                    scale: m == mood ? 1.25 : 0.85,
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeOutBack,
+                    child: AnimatedOpacity(
+                      opacity: m == mood ? 1 : 0.35,
+                      duration: const Duration(milliseconds: 400),
+                      child: Column(
+                        children: [
+                          SvgPicture.asset(
+                            'assets/mascot/${m.pose}.svg',
+                            width: 36,
+                            height: 36,
+                          ),
+                          Container(
+                            margin: const EdgeInsets.only(top: 2),
+                            height: 5,
+                            width: 26,
+                            decoration: BoxDecoration(
+                              color: m.color,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),

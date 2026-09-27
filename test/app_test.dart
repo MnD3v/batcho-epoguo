@@ -219,6 +219,8 @@ void main() {
   ) async {
     final c = await start(tester, signedInPrefs);
     expect(find.textContaining('Awa, lève-toi et bois 0,25 L'), findsOneWidget);
+    // Le visage de Reno suit l'eau bue.
+    expect(find.text('Très triste'), findsOneWidget); // 10h15, rien bu.
 
     final nine = find.byKey(const ValueKey('slot_09:00'));
     await tap(tester, nine);
@@ -227,6 +229,9 @@ void main() {
     expect(find.text('Nouveau badge !'), findsOneWidget);
     await tap(tester, text('CONTINUER'));
     expect(c.xp, 10);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 5000));
+    await tester.pumpAndSettle();
+    expect(find.text('Triste'), findsOneWidget); // 0,25 L sur 0,5 L attendus.
 
     await tap(tester, find.byKey(const ValueKey('slot_11:00')));
     expect(find.textContaining('Cette alerte s\'ouvre à 11:00 🔒'),

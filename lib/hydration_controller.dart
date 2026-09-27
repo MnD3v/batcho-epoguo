@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'data/hydration_store.dart';
 import 'data/alert_messages.dart';
 import 'data/kidney_tips.dart';
+import 'models/mood.dart';
 import 'models/city.dart';
 import 'models/game.dart';
 import 'models/plan.dart';
@@ -94,6 +95,14 @@ class HydrationController extends ChangeNotifier {
   int get goalMl => _plan?.goalMl ?? 0;
 
   bool isTipRead(int index) => _stats.readTips.contains(index);
+
+  /// Humeur de Reno maintenant, selon l'heure et l'eau bue.
+  Mood get mood => moodFor(
+        reminders: reminders,
+        drunkMl: drunkMl,
+        goalMl: goalMl,
+        nowMinutes: now().hour * 60 + now().minute,
+      );
 
   int? get currentIndex => _plan?.currentIndex(now());
   int? get nextIndex => _plan?.nextIndex(now());
