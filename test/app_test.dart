@@ -6,7 +6,9 @@ import 'package:bois_et_vis/main.dart';
 import 'package:bois_et_vis/models/plan.dart';
 import 'package:bois_et_vis/models/profile.dart';
 import 'package:bois_et_vis/services/demo_auth_service.dart';
+import 'package:bois_et_vis/services/social_repository.dart';
 import 'package:bois_et_vis/services/user_repository.dart';
+import 'package:bois_et_vis/social_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,7 +35,15 @@ void main() {
       clock: () => DateTime(2026, 9, 27, 10, 15),
     );
     await tester.pumpWidget(
-      BoisEtVisApp(auth: DemoAuthService(prefs), controller: c),
+      BoisEtVisApp(
+        auth: DemoAuthService(prefs),
+        controller: c,
+        social: SocialController(
+          repository: DemoSocialRepository(prefs),
+          hydration: c,
+          store: HydrationStore(prefs),
+        ),
+      ),
     );
     await tester.pumpAndSettle();
     return c;
@@ -205,6 +215,9 @@ void main() {
     await tap(tester, text('ANNÉE'));
     expect(find.text('Moyenne par jour, sur 12 mois'), findsOneWidget);
 
+    // Retour en haut du profil, où se trouve la roue dentée.
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 3000));
+    await tester.pumpAndSettle();
     await tap(tester, find.byTooltip('Paramètres'));
     expect(find.text('Paramètres'), findsOneWidget);
 
@@ -256,6 +269,39 @@ void main() {
     expect(find.text('COMMENCER'), findsOneWidget);
     expect(cloudDoc(awaUid), isNull);
     expect(prefs.getString('demo_accounts'), isNot(contains('awa@')));
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('amis : code d\'invitation et défi de la semaine', (
+    tester,
+  ) async {
+    final c = await start(tester, signedInPrefs);
+    await tap(tester, find.byKey(const ValueKey('slot_09:00')));
+    await tap(tester, text('CONTINUER'));
+    await tap(tester, text('CONTINUER'));
+
+    await tester.tap(find.bySemanticsLabel('Amis'));
+    await tester.pumpAndSettle();
+    expect(find.text('Défie tes amis : qui boit le plus cette semaine ?'),
+        findsOneWidget);
+    // Un code d'invitation de 6 caractères a été créé.
+    expect(prefs.getString('social_referral_code')?.length, 6);
+
+    await tap(tester, text('CRÉER UN DÉFI'));
+    await tester.enterText(find.byType(TextField).last, 'Famille');
+    await tester.pumpAndSettle();
+    await tap(tester, text('CRÉER'));
+    expect(find.text('Famille'), findsOneWidget);
+    expect(find.text('Awa (toi)'), findsOneWidget);
+    expect(find.text('0,25 L'), findsWidgets);
+
+    // Code inconnu : erreur dans la fenêtre, qui reste ouverte.
+    await tap(tester, text('REJOINDRE AVEC UN CODE'));
+    await tester.enterText(find.byType(TextField).last, 'ZZZZZZ');
+    await tester.pumpAndSettle();
+    await tap(tester, text('REJOINDRE'));
+    expect(find.text('Ce défi n\'existe pas.'), findsOneWidget);
+    expect(c.xp, 10);
     await tester.pumpWidget(const SizedBox());
   });
 

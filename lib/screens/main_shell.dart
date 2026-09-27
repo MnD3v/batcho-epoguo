@@ -4,17 +4,26 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../hydration_controller.dart';
 import '../services/auth_service.dart';
 import '../theme/duo.dart';
+import '../social_controller.dart';
+import '../widgets/reward_feedback.dart';
 import 'badges_screen.dart';
+import 'friends_screen.dart';
 import 'lessons_screen.dart';
 import 'path_screen.dart';
 import 'profile_screen.dart';
 
 /// Écran principal avec la barre d'onglets du bas.
 class MainShell extends StatefulWidget {
-  const MainShell({super.key, required this.controller, required this.auth});
+  const MainShell({
+    super.key,
+    required this.controller,
+    required this.auth,
+    required this.social,
+  });
 
   final HydrationController controller;
   final AuthService auth;
+  final SocialController social;
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -26,9 +35,24 @@ class _MainShellState extends State<MainShell> {
   static const _tabs = [
     ('assets/icons/home.svg', 'Parcours'),
     ('assets/icons/book.svg', 'Leçons'),
+    ('assets/icons/friends.svg', 'Amis'),
     ('assets/icons/trophy.svg', 'Succès'),
     ('assets/icons/kidney.svg', 'Profil'),
   ];
+
+  Future<void> _select(int tab) async {
+    setState(() => _tab = tab);
+    if (_tabs[tab].$2 != 'Amis') return;
+    // Les défis bougent pendant qu'on est ailleurs : on les recharge.
+    final reward = await widget.social.refresh();
+    if (reward != null && mounted) {
+      await showReward(
+        context,
+        reward,
+        message: 'Un ami a rejoint Bois & Vis grâce à ton code !',
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,8 +63,13 @@ class _MainShellState extends State<MainShell> {
         children: [
           PathScreen(controller: c),
           LessonsScreen(controller: c),
+          FriendsScreen(social: widget.social),
           BadgesScreen(controller: c),
-          ProfileScreen(controller: c, auth: widget.auth),
+          ProfileScreen(
+            controller: c,
+            auth: widget.auth,
+            social: widget.social,
+          ),
         ],
       ),
       bottomNavigationBar: Container(
@@ -61,10 +90,10 @@ class _MainShellState extends State<MainShell> {
                       label: _tabs[i].$2,
                       excludeSemantics: true,
                       child: GestureDetector(
-                        onTap: () => setState(() => _tab = i),
+                        onTap: () => _select(i),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 150),
-                          margin: const EdgeInsets.symmetric(horizontal: 6),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
                           padding: const EdgeInsets.symmetric(vertical: 6),
                           decoration: BoxDecoration(
                             color:

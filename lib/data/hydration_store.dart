@@ -13,6 +13,7 @@ class GameStats {
     this.bestStreak = 0,
     this.readTips = const {},
     this.badges = const {},
+    this.bonusXp = 0,
   });
 
   final int totalChecks;
@@ -22,10 +23,14 @@ class GameStats {
   final Set<int> readTips;
   final Set<Achievement> badges;
 
+  /// XP offerts (parrainage).
+  final int bonusXp;
+
   int get xp =>
       totalChecks * xpPerCheck +
       perfectDays * xpPerfectDay +
-      readTips.length * xpPerTip;
+      readTips.length * xpPerTip +
+      bonusXp;
 
   GameStats copyWith({
     int? totalChecks,
@@ -34,6 +39,7 @@ class GameStats {
     int? bestStreak,
     Set<int>? readTips,
     Set<Achievement>? badges,
+    int? bonusXp,
   }) =>
       GameStats(
         totalChecks: totalChecks ?? this.totalChecks,
@@ -42,6 +48,7 @@ class GameStats {
         bestStreak: bestStreak ?? this.bestStreak,
         readTips: readTips ?? this.readTips,
         badges: badges ?? this.badges,
+        bonusXp: bonusXp ?? this.bonusXp,
       );
 }
 
@@ -72,6 +79,7 @@ class HydrationStore {
   static const _bestStreakKey = 'stats_best_streak';
   static const _readTipsKey = 'stats_read_tips';
   static const _badgesKey = 'stats_badges';
+  static const _bonusXpKey = 'stats_bonus_xp';
   static const _firstDayKey = 'first_day';
   static const _ownerKey = 'owner_uid';
 
@@ -81,6 +89,7 @@ class HydrationStore {
     'plan_',
     'checks_',
     'stats_',
+    'social_',
     _firstDayKey,
   ];
 
@@ -109,6 +118,37 @@ class HydrationStore {
   bool get loudAlerts => _prefs.getBool(_loudKey) ?? false;
 
   Future<void> setLoudAlerts(bool loud) => _prefs.setBool(_loudKey, loud);
+
+  // --- Amis : parrainage et défis ---
+
+  static const _referralCodeKey = 'social_referral_code';
+  static const _referredByKey = 'social_referred_by';
+  static const _referralsCreditedKey = 'social_referrals_credited';
+  static const _challengesKey = 'social_challenges';
+
+  String? get referralCode => _prefs.getString(_referralCodeKey);
+
+  Future<void> setReferralCode(String code) =>
+      _prefs.setString(_referralCodeKey, code);
+
+  /// Code d'invitation déjà utilisé (une seule fois par compte).
+  String? get referredBy => _prefs.getString(_referredByKey);
+
+  Future<void> setReferredBy(String code) =>
+      _prefs.setString(_referredByKey, code);
+
+  /// Amis invités déjà récompensés.
+  int get referralsCredited => _prefs.getInt(_referralsCreditedKey) ?? 0;
+
+  Future<void> setReferralsCredited(int n) =>
+      _prefs.setInt(_referralsCreditedKey, n);
+
+  /// Codes des défis rejoints.
+  List<String> get challengeCodes =>
+      _prefs.getStringList(_challengesKey) ?? const [];
+
+  Future<void> setChallengeCodes(List<String> codes) =>
+      _prefs.setStringList(_challengesKey, codes);
 
   /// Relit les valeurs écrites par un autre isolate (notification, widget).
   Future<void> reload() => _prefs.reload();
@@ -283,6 +323,7 @@ class HydrationStore {
               in _prefs.getStringList(_badgesKey) ?? const <String>[])
             ...Achievement.values.where((b) => b.name == name),
         },
+        bonusXp: _prefs.getInt(_bonusXpKey) ?? 0,
       );
 
   Future<void> saveStats(GameStats stats) async {
@@ -296,6 +337,7 @@ class HydrationStore {
     await _prefs.setStringList(_badgesKey, [
       for (final b in stats.badges) b.name,
     ]);
+    await _prefs.setInt(_bonusXpKey, stats.bonusXp);
   }
 
   Future<void> _pruneOldDays(DateTime today) async {

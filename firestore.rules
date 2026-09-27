@@ -1,10 +1,46 @@
 rules_version = '2';
 
-// Chaque personne ne peut lire et écrire que son propre document users/{uid}.
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Chaque personne ne peut lire et écrire que son propre document.
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Codes d'invitation : lisibles par tous les comptes (pour parrainer),
+    // créés par leur propriétaire, jamais modifiés.
+    match /referralCodes/{code} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+    }
+
+    // Parrainage : un seul par compte, créé par le filleul lui-même ;
+    // le parrain peut compter ceux qui le concernent.
+    match /referrals/{invitee} {
+      allow create: if signedIn()
+        && request.auth.uid == invitee
+        && request.resource.data.referrer != invitee;
+      allow read: if signedIn()
+        && (request.auth.uid == invitee
+            || resource.data.referrer == request.auth.uid);
+    }
+
+    // Défis entre amis : lisibles avec le code ; chacun ne modifie que sa
+    // propre ligne du classement (rejoindre, mettre à jour, quitter).
+    match /challenges/{code} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.members.keys().hasOnly([request.auth.uid]);
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+        && request.resource.data.members.diff(resource.data.members)
+             .affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.members.size() <= 20;
     }
   }
 }

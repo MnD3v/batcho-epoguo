@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../models/game.dart';
 import '../theme/duo.dart';
 import 'duo_widgets.dart';
+import 'share_card.dart';
 
 const _praises = [
   'Excellent !',
@@ -184,6 +185,21 @@ class CelebrationScreen extends StatelessWidget {
                 ],
               ),
               const Spacer(),
+              DuoButton.outline(
+                label: 'Partager',
+                icon: Icons.share_rounded,
+                onPressed: () => shareProgress(
+                  context,
+                  headline: title,
+                  detail: reward.badges.isNotEmpty
+                      ? 'Badge « ${reward.badges.first.title} »'
+                      : 'Je bois mon eau et je protège mes reins.',
+                  icon: reward.badges.isNotEmpty
+                      ? reward.badges.first.icon
+                      : 'assets/icons/flame.svg',
+                ),
+              ),
+              const SizedBox(height: 10),
               DuoButton(
                 label: 'Continuer',
                 onPressed: () => Navigator.of(context).pop(),

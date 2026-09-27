@@ -6,15 +6,22 @@ import 'screens/auth_screens.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/auth_service.dart';
+import 'social_controller.dart';
 import 'theme/duo.dart';
 
 /// Choisit l'écran selon la situation : pas connecté → accueil, connecté
 /// sans alertes → questionnaire, sinon → l'appli.
 class AppRoot extends StatefulWidget {
-  const AppRoot({super.key, required this.auth, required this.controller});
+  const AppRoot({
+    super.key,
+    required this.auth,
+    required this.controller,
+    required this.social,
+  });
 
   final AuthService auth;
   final HydrationController controller;
+  final SocialController social;
 
   @override
   State<AppRoot> createState() => _AppRootState();
@@ -49,8 +56,11 @@ class _AppRootState extends State<AppRoot> {
     setState(() => _loading = true);
     if (user == null) {
       await widget.controller.onSignedOut();
+      widget.social.reset();
     } else {
       await widget.controller.onSignedIn(user);
+      // Amis invités, défis : en arrière-plan.
+      widget.social.refresh(credit: false);
     }
     if (mounted && _loadedUid == user?.uid) setState(() => _loading = false);
   }
@@ -78,6 +88,7 @@ class _AppRootState extends State<AppRoot> {
           key: ValueKey('main_${user.uid}'),
           controller: widget.controller,
           auth: widget.auth,
+          social: widget.social,
         );
       },
     );

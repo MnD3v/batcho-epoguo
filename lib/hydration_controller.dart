@@ -360,6 +360,35 @@ class HydrationController extends ChangeNotifier {
     );
   }
 
+  /// Compte connecté (null hors connexion).
+  String? get uid => _uid;
+
+  /// Lundi de la semaine en cours (clé des défis entre amis).
+  DateTime get weekStart =>
+      DateTime(_day.year, _day.month, _day.day - (_day.weekday - 1));
+
+  String get weekKey =>
+      '${weekStart.year}-${weekStart.month.toString().padLeft(2, '0')}-'
+      '${weekStart.day.toString().padLeft(2, '0')}';
+
+  /// Litres bus depuis lundi (millilitres).
+  int get weekMl {
+    var total = 0;
+    for (var d = weekStart;
+        !d.isAfter(_day);
+        d = DateTime(d.year, d.month, d.day + 1)) {
+      total += _store.drunkMl(d);
+    }
+    return total;
+  }
+
+  /// XP offerts (parrainage).
+  Future<Reward> addBonusXp(int xp) async {
+    final before = _stats;
+    _stats = before.copyWith(bonusXp: before.bonusXp + xp);
+    return _finish(before);
+  }
+
   /// Leçon lue : +5 XP la première fois.
   Future<Reward> markTipRead(int index) async {
     if (isTipRead(index)) return const Reward();

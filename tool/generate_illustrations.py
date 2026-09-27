@@ -391,6 +391,13 @@ ICONS = {
                  '<path d="M11 20 L11 41 L37 41 L37 20 L24 10 Z" fill="#FFC800"/>'
                  '<rect x="19" y="27" width="10" height="14" rx="3" fill="#FF9600"/>'),
     'drop': icon(drop(24, 25, 1.4, '#1CB0F6')),
+    # Deux amis : onglet « Amis ».
+    'friends': icon('<circle cx="31" cy="15" r="7" fill="#58CC02"/>'
+                    '<path d="M19 40 C19 29 43 29 43 40 Z" fill="#58CC02"/>'
+                    '<circle cx="18" cy="17" r="8" fill="#1CB0F6" stroke="#FFFFFF" '
+                    'stroke-width="2"/>'
+                    '<path d="M4 43 C4 30 32 30 32 43 Z" fill="#1CB0F6" '
+                    'stroke="#FFFFFF" stroke-width="2"/>'),
     # Glaçon : jour de repos qui protège la flamme.
     'freeze': icon('<rect x="7" y="9" width="34" height="32" rx="8" fill="#84D8FF" '
                    'stroke="#1CB0F6" stroke-width="3"/>'

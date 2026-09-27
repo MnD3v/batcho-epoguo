@@ -9,11 +9,13 @@ import 'data/hydration_store.dart';
 import 'firebase_options.dart';
 import 'hydration_controller.dart';
 import 'services/auth_service.dart';
+import 'social_controller.dart';
 import 'services/background_actions.dart';
 import 'services/demo_auth_service.dart';
 import 'services/firebase_auth_service.dart';
 import 'services/home_widget_sync.dart';
 import 'services/reminder_scheduler.dart';
+import 'services/social_repository.dart';
 import 'services/user_repository.dart';
 import 'theme/duo.dart';
 
@@ -27,16 +29,19 @@ Future<void> main() async {
   // Firebase si les clés sont là (`flutterfire configure`), sinon mode démo.
   AuthService auth;
   UserRepository cloud;
+  SocialRepository friends;
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
     auth = FirebaseAuthService();
     cloud = FirestoreUserRepository();
+    friends = FirestoreSocialRepository();
   } catch (e) {
     debugPrint('Mode démo : $e');
     auth = DemoAuthService(prefs);
     cloud = DemoUserRepository(prefs);
+    friends = DemoSocialRepository(prefs);
   }
 
   final controller = HydrationController(
@@ -57,14 +62,25 @@ Future<void> main() async {
     await controller.protectStreak();
     controller.rescheduleAlerts();
   }
-  runApp(BoisEtVisApp(auth: auth, controller: controller));
+  final social = SocialController(
+    repository: friends,
+    hydration: controller,
+    store: store,
+  );
+  runApp(BoisEtVisApp(auth: auth, controller: controller, social: social));
 }
 
 class BoisEtVisApp extends StatelessWidget {
-  const BoisEtVisApp({super.key, required this.auth, required this.controller});
+  const BoisEtVisApp({
+    super.key,
+    required this.auth,
+    required this.controller,
+    required this.social,
+  });
 
   final AuthService auth;
   final HydrationController controller;
+  final SocialController social;
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +91,7 @@ class BoisEtVisApp extends StatelessWidget {
       supportedLocales: const [Locale('fr')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: Duo.theme(),
-      home: AppRoot(auth: auth, controller: controller),
+      home: AppRoot(auth: auth, controller: controller, social: social),
     );
   }
 }

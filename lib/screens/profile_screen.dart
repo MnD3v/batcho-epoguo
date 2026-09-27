@@ -4,6 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../data/kidney_tips.dart';
 import '../hydration_controller.dart';
 import '../services/auth_service.dart';
+import '../social_controller.dart';
+import '../widgets/share_card.dart';
 import '../models/plan.dart';
 import '../theme/duo.dart';
 import '../widgets/duo_widgets.dart';
@@ -16,10 +18,12 @@ class ProfileScreen extends StatelessWidget {
     super.key,
     required this.controller,
     required this.auth,
+    required this.social,
   });
 
   final HydrationController controller;
   final AuthService auth;
+  final SocialController social;
 
   @override
   Widget build(BuildContext context) {
@@ -118,6 +122,21 @@ class ProfileScreen extends StatelessWidget {
                 '${controller.bestStreak > 1 ? 's' : ''} · Jours de repos : '
                 '${controller.freezes}/2 (1 gagné tous les 7 jours)',
                 style: Duo.body.copyWith(fontSize: 14),
+              ),
+              const SizedBox(height: 14),
+              DuoButton(
+                label: 'Partager ma progression',
+                icon: Icons.share_rounded,
+                onPressed: () => shareProgress(
+                  context,
+                  headline: controller.streak > 0
+                      ? '${controller.streak} jour'
+                          '${controller.streak > 1 ? 's' : ''} de flamme !'
+                      : '${formatLiters(stats.totalMl)} d\'eau bus !',
+                  detail: 'Niveau ${controller.level.number} · '
+                      '${controller.level.name} · ${controller.xp} XP',
+                  inviteCode: social.referralCode,
+                ),
               ),
               const SizedBox(height: 24),
               EvolutionSection(controller: controller),
