@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'dart:ui' show DartPluginRegistrant;
 
 import 'package:awesome_notifications/awesome_notifications.dart';
@@ -38,11 +39,14 @@ Future<void> onNotificationAction(ReceivedAction action) async {
   }
 }
 
-/// Bouton « J'ai bu ✓ » du widget.
+/// Bouton « J'ai bu ✓ » du widget, et de la notification sur Android
+/// (boisetvis://drank?minutes=540 : l'alerte de 9h).
 @pragma('vm:entry-point')
 Future<void> onWidgetAction(Uri? uri) async {
   if (uri?.host == HomeWidgetSync.drankUri.host) {
-    await quickCheckInBackground();
+    await quickCheckInBackground(
+      minutes: int.tryParse(uri?.queryParameters['minutes'] ?? ''),
+    );
   }
 }
 
@@ -61,8 +65,22 @@ class _BackgroundScheduler implements ReminderScheduler {
   Future<void> showTest(reminder, profile, {bool loud = false}) async {}
 
   @override
-  Future<void> scheduleEveningRescue(at, message) =>
-      AwesomeReminderScheduler.eveningRescue(at, message);
+  Future<void> scheduleEveningRescue(at, message) async {
+    if (!Platform.isAndroid) {
+      return AwesomeReminderScheduler.eveningRescue(at, message);
+    }
+    // Android : l'alarme native ne peut pas être annulée d'ici ; on note le
+    // jour et l'alerte du soir ne s'affichera pas (AlertReceiver.kt).
+    if (at == null) {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      await prefs.setString(
+        'rescue_off_day',
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-'
+            '${now.day.toString().padLeft(2, '0')}',
+      );
+    }
+  }
 
   @override
   Future<void> cancelAll() async {}

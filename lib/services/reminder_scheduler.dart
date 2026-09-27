@@ -48,11 +48,15 @@ const snoozeDelay = Duration(minutes: 15);
 /// conseil du jour, boutons « J'ai bu ✓ » et « Plus tard » qui marchent
 /// sans ouvrir l'appli.
 class AwesomeReminderScheduler implements ReminderScheduler {
-  AwesomeReminderScheduler({required this.onAction});
+  AwesomeReminderScheduler({required this.onAction, this.channels = true});
 
   /// Point d'entrée des boutons (fonction statique, appelée même quand
   /// l'appli est fermée).
   final ActionHandler onAction;
+
+  /// Faux sur Android : les alertes y sont natives (android_alerts.dart) et
+  /// awesome ne sert qu'aux autorisations, sans ses propres canaux.
+  final bool channels;
 
   final _notifications = AwesomeNotifications();
 
@@ -90,39 +94,44 @@ class AwesomeReminderScheduler implements ReminderScheduler {
     await _notifications.initialize(
       'resource://drawable/ic_notification',
       [
-        NotificationChannel(
-          channelKey: channelKey,
-          channelName: 'Alertes pour boire',
-          channelDescription:
-              'Gouttes d\'eau et carillon aux heures où tu dois boire',
-          importance: NotificationImportance.High,
-          defaultColor: _blue,
-          ledColor: _blue,
-          playSound: true,
-          enableVibration: true,
-          soundSource: softSound,
-          vibrationPattern: softVibration,
-          defaultRingtoneType: DefaultRingtoneType.Notification,
-        ),
-        NotificationChannel(
-          channelKey: loudChannelKey,
-          channelName: 'Alertes fortes (réveil)',
-          channelDescription:
-              'Sonne comme un réveil aux heures où tu dois boire',
-          importance: NotificationImportance.Max,
-          defaultColor: _blue,
-          ledColor: _blue,
-          playSound: true,
-          enableVibration: true,
-          soundSource: loudSound,
-          vibrationPattern: loudVibration,
-          defaultRingtoneType: DefaultRingtoneType.Alarm,
-        ),
+        if (channels) ...[
+          NotificationChannel(
+            channelKey: channelKey,
+            channelName: 'Alertes pour boire',
+            channelDescription:
+                'Gouttes d\'eau et carillon aux heures où tu dois boire',
+            importance: NotificationImportance.High,
+            defaultColor: _blue,
+            ledColor: _blue,
+            playSound: true,
+            enableVibration: true,
+            soundSource: softSound,
+            vibrationPattern: softVibration,
+            defaultRingtoneType: DefaultRingtoneType.Notification,
+          ),
+          NotificationChannel(
+            channelKey: loudChannelKey,
+            channelName: 'Alertes fortes (réveil)',
+            channelDescription:
+                'Sonne comme un réveil aux heures où tu dois boire',
+            importance: NotificationImportance.Max,
+            defaultColor: _blue,
+            ledColor: _blue,
+            playSound: true,
+            enableVibration: true,
+            soundSource: loudSound,
+            vibrationPattern: loudVibration,
+            defaultRingtoneType: DefaultRingtoneType.Alarm,
+          ),
+        ],
       ],
       languageCode: 'fr',
     );
     // Anciens canaux (son du téléphone) : retirés des réglages.
-    for (final key in _oldChannelKeys) {
+    for (final key in [
+      ..._oldChannelKeys,
+      if (!channels) ...[channelKey, loudChannelKey],
+    ]) {
       try {
         await _notifications.removeChannel(key);
       } catch (_) {}
@@ -134,18 +143,18 @@ class AwesomeReminderScheduler implements ReminderScheduler {
   Future<bool> requestPermission() async {
     if (!await _notifications.isNotificationAllowed()) {
       await _notifications.requestPermissionToSendNotifications(
-        channelKey: channelKey,
+        channelKey: channels ? channelKey : null,
       );
     }
     // Heure exacte (Android 12+) : demandée une fois, sinon à quelques
     // minutes près.
     final precise = await _notifications.checkPermissionList(
-      channelKey: channelKey,
+      channelKey: channels ? channelKey : null,
       permissions: const [NotificationPermission.PreciseAlarms],
     );
     if (precise.isEmpty) {
       await _notifications.requestPermissionToSendNotifications(
-        channelKey: channelKey,
+        channelKey: channels ? channelKey : null,
         permissions: const [NotificationPermission.PreciseAlarms],
       );
     }

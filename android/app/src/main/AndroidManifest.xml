@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Alertes (awesome_notifications) : notifications et reprogrammation après redémarrage -->
+    <!-- Alertes : notifications et reprogrammation après redémarrage -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <!-- Alertes à l'heure exacte (demandée à la personne sur Android 14+) -->
@@ -43,6 +43,17 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider"
                 android:resource="@xml/hydration_widget_info" />
+        </receiver>
+        <!-- Alertes façon Duolingo (Alerts.kt) : heure d'une alerte et ses boutons -->
+        <receiver android:name=".AlertReceiver" android:exported="false" />
+        <!-- Reprogramme les alertes après un redémarrage ou un changement d'heure -->
+        <receiver android:name=".AlertBootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
         </receiver>
         <!-- Bouton du widget : coche en arrière-plan (code Dart) -->
         <receiver android:name="es.antonborri.home_widget.HomeWidgetBackgroundReceiver"

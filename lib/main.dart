@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -8,6 +10,7 @@ import 'app_root.dart';
 import 'data/hydration_store.dart';
 import 'firebase_options.dart';
 import 'hydration_controller.dart';
+import 'services/android_alerts.dart';
 import 'services/auth_service.dart';
 import 'social_controller.dart';
 import 'services/background_actions.dart';
@@ -24,7 +27,15 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
   final store = HydrationStore(prefs);
-  final scheduler = AwesomeReminderScheduler(onAction: onNotificationAction);
+  // Android : alertes natives façon Duolingo ; iPhone : awesome_notifications.
+  final ReminderScheduler scheduler = Platform.isAndroid
+      ? AndroidReminderScheduler(
+          permissions: AwesomeReminderScheduler(
+            onAction: onNotificationAction,
+            channels: false,
+          ),
+        )
+      : AwesomeReminderScheduler(onAction: onNotificationAction);
   await scheduler.init();
 
   // Firebase si les clés sont là (`flutterfire configure`), sinon mode démo.
