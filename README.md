@@ -31,20 +31,19 @@ Les données sont gardées sur le téléphone (`shared_preferences`) et sauvegar
 dans `users/{uid}` : prénom, e-mail, réponses au questionnaire en clair (lisibles dans la console
 Firebase), et toute la progression dans `data`.
 
-## Brancher Firebase
+## Firebase
 
-Tant que Firebase n'est pas configuré, l'appli tourne en **mode démo** : les comptes restent sur le
-téléphone (mention « Mode démo » sur l'accueil). Pour passer en vrai :
+Projet Firebase **`bois-et-vis`**, identifiant de l'appli **`com.equilibre.boisetvis`** (Android et iOS).
 
-1. Dans la [console Firebase](https://console.firebase.google.com), créer le projet, puis activer
-   **Authentication → E-mail/Mot de passe** et **Firestore Database**.
-2. Installer les outils et générer les clés (remplace `lib/firebase_options.dart`) :
-   ```bash
-   dart pub global activate flutterfire_cli
-   flutterfire configure --platforms=android,ios
-   ```
-3. Publier les règles de sécurité de `firestore.rules` (console Firestore → Règles, ou
-   `firebase deploy --only firestore:rules`).
+- **Android** : branché (clés dans `lib/firebase_options.dart`).
+- **iOS** : pas encore. Tant qu'il manque, l'appli tourne en **mode démo** sur iPhone (comptes gardés sur
+  le téléphone, mention « Mode démo » sur l'accueil). Pour le brancher : ajouter l'appli iOS
+  `com.equilibre.boisetvis` dans la console, puis `flutterfire configure --platforms=android,ios`.
+
+Dans la [console Firebase](https://console.firebase.google.com) :
+1. **Authentication → Méthode de connexion** : activer **E-mail/Mot de passe**.
+2. **Firestore Database** : créer la base, puis publier les règles de `firestore.rules`
+   (onglet Règles, ou `firebase deploy --only firestore:rules`).
 
 Aucune modification Gradle n'est nécessaire : les clés sont lues depuis `lib/firebase_options.dart`.
 
