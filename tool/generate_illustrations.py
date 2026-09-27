@@ -56,6 +56,16 @@ FACES = {
         f'<path d="M134 94 Q142 100 150 94" fill="none" stroke="{INK}" '
         f'stroke-width="4" stroke-linecap="round"/>'
         f'<ellipse cx="127" cy="120" rx="7" ry="5" fill="{INK}"/>'),
+    'joy': (
+        f'<path d="M104 94 Q112 84 120 94" fill="none" stroke="{INK}" '
+        f'stroke-width="4.5" stroke-linecap="round"/>'
+        f'<path d="M134 94 Q142 84 150 94" fill="none" stroke="{INK}" '
+        f'stroke-width="4.5" stroke-linecap="round"/>'
+        f'<circle cx="102" cy="110" r="7" fill="#FF8A80" fill-opacity="0.7"/>'
+        f'<circle cx="154" cy="110" r="7" fill="#FF8A80" fill-opacity="0.7"/>'
+        f'<path d="M112 108 Q127 134 142 108 Z" fill="{INK}" stroke="{INK}" '
+        f'stroke-width="3" stroke-linejoin="round"/>'
+        f'<path d="M119 121 Q127 115 135 121 Q127 128 119 121 Z" fill="#FF7B7B"/>'),
     'none': '',
 }
 
@@ -303,6 +313,90 @@ ICON = svg(1024, 1024, ''.join([
     drop(250, 260, 6.0, '#FFFFFF'),
 ]))
 
+
+# ---------------------------------------------------------------------------
+# Mascotte « Reno » et icônes du jeu (style Duolingo).
+
+def arm(x1, y1, x2, y2):
+    return (f'<path d="M{x1} {y1} L{x2} {y2}" stroke="{PINK_DARK}" stroke-width="8" '
+            f'stroke-linecap="round"/><circle cx="{x2}" cy="{y2}" r="7" fill="{PINK}" '
+            f'stroke="{PINK_DARK}" stroke-width="3"/>')
+
+
+def mascot(face, arms='', extra='', fill=PINK, tx=-18, ty=0):
+    return svg(200, 200, f'<g transform="translate({tx} {ty})">{arms}</g>'
+               + kidney(tx, ty, 1.0, fill=fill, face=face) + extra)
+
+
+MASCOTS = {
+    'mascot_happy': mascot('happy', arm(168, 118, 186, 142) + arm(74, 72, 58, 50)),
+    'mascot_cheer': mascot(
+        'joy', arm(166, 84, 190, 50) + arm(74, 68, 52, 34),
+        sparkle(178, 22, 1.1) + sparkle(24, 70, 0.8) + sparkle(186, 150, 0.7, '#4FC3F7')),
+    'mascot_sad': mascot(
+        'worried', arm(168, 126, 184, 160) + arm(72, 136, 60, 168),
+        drop(162, 52, 0.7, '#81D4FA'), fill='#E8A0A0'),
+    'mascot_drink': mascot(
+        'happy', '<path d="M168 112 Q184 124 178 140" fill="none" stroke="' + PINK_DARK +
+        '" stroke-width="8" stroke-linecap="round"/>',
+        glass(148, 116, 0.95, 0.75, 8)),
+}
+
+
+def icon(body, size=48):
+    return svg(size, size, body)
+
+
+FLAME = ('M24 4 C27 12 36 16 36 28 A12 12 0 0 1 12 28 C12 22 15 18 18 15 '
+         'C18 20 20 23 23 24 C21 16 22 10 24 4 Z')
+FLAME_IN = 'M24 22 C26 26 30 28 30 33 A6 6 0 0 1 18 33 C18 29 21 27 24 22 Z'
+GEM = 'M24 4 C31 13 38 21 38 29 A14 14 0 0 1 10 29 C10 21 17 13 24 4 Z'
+
+ICONS = {
+    'flame': icon(f'<path d="{FLAME}" fill="#FF9600"/><path d="{FLAME_IN}" fill="#FFC800"/>'),
+    'flame_off': icon(f'<path d="{FLAME}" fill="#E5E5E5"/><path d="{FLAME_IN}" fill="#F7F7F7"/>'),
+    'xp': icon(f'<path d="{GEM}" fill="#1CB0F6"/>'
+               '<path d="M24 12 C28 18 32 23 32 29 A8 8 0 0 1 24 37 Z" fill="#1899D6"/>'
+               '<path d="M16 28 A8 8 0 0 0 20 35" fill="none" stroke="#FFFFFF" stroke-width="3" '
+               'stroke-linecap="round"/>'),
+    'crown': icon('<path d="M6 36 L8 14 L17 23 L24 8 L31 23 L40 14 L42 36 Z" fill="#FFC800" '
+                  'stroke="#E5A800" stroke-width="3" stroke-linejoin="round"/>'
+                  '<rect x="6" y="36" width="36" height="6" rx="2" fill="#E5A800"/>'
+                  '<circle cx="24" cy="28" r="3.5" fill="#FF4B4B"/>'),
+    'lock': icon('<path d="M15 22 L15 16 A9 9 0 0 1 33 16 L33 22" fill="none" stroke="#AFAFAF" '
+                 'stroke-width="5"/><rect x="10" y="21" width="28" height="22" rx="6" fill="#AFAFAF"/>'
+                 '<circle cx="24" cy="31" r="3.5" fill="#FFFFFF"/>'),
+    'star': icon('<path d="M24 5 L29.5 17.5 L43 18.5 L32.5 27.5 L36 41 L24 33.5 L12 41 L15.5 27.5 '
+                 'L5 18.5 L18.5 17.5 Z" fill="#FFC800" stroke="#E5A800" stroke-width="3" '
+                 'stroke-linejoin="round"/>'),
+    'sunrise': icon('<path d="M8 34 A16 16 0 0 1 40 34 Z" fill="#FF9600"/>'
+                    + ''.join(f'<path d="M{24 + 16 * c:.1f} {30 - 16 * s:.1f} L{24 + 21 * c:.1f} '
+                              f'{30 - 21 * s:.1f}" stroke="#FFC800" stroke-width="3.5" '
+                              'stroke-linecap="round"/>'
+                              for c, s in [(1, 0.1), (0.7, 0.7), (0, 1), (-0.7, 0.7), (-1, 0.1)])
+                    + '<rect x="4" y="34" width="40" height="5" rx="2.5" fill="#1CB0F6"/>'),
+    'moon': icon('<path d="M30 6 A18 18 0 1 0 42 32 A14 14 0 1 1 30 6 Z" fill="#8E7CF0"/>'
+                 + sparkle(12, 12, 0.5, '#FFC800') + sparkle(38, 12, 0.35, '#FFC800')),
+    'book': icon('<path d="M4 10 C12 8 19 9 24 13 L24 42 C19 38 12 37 4 39 Z" fill="#1CB0F6"/>'
+                 '<path d="M44 10 C36 8 29 9 24 13 L24 42 C29 38 36 37 44 39 Z" fill="#1899D6"/>'
+                 '<path d="M9 17 L19 18 M9 23 L19 24 M29 18 L39 17 M29 24 L39 23" stroke="#FFFFFF" '
+                 'stroke-width="2.5" stroke-linecap="round"/>'),
+    'trophy': icon('<path d="M13 6 L35 6 L35 18 A11 11 0 0 1 13 18 Z" fill="#FFC800"/>'
+                   '<path d="M13 10 L6 10 A7 7 0 0 0 14 20 M35 10 L42 10 A7 7 0 0 1 34 20" fill="none" '
+                   'stroke="#FFC800" stroke-width="4"/>'
+                   '<rect x="21" y="28" width="6" height="8" fill="#E5A800"/>'
+                   '<rect x="14" y="36" width="20" height="7" rx="3" fill="#E5A800"/>'),
+    'home': icon('<path d="M6 22 L24 7 L42 22" fill="none" stroke="#FF9600" stroke-width="5" '
+                 'stroke-linecap="round" stroke-linejoin="round"/>'
+                 '<path d="M11 20 L11 41 L37 41 L37 20 L24 10 Z" fill="#FFC800"/>'
+                 '<rect x="19" y="27" width="10" height="14" rx="3" fill="#FF9600"/>'),
+    'drop': icon(drop(24, 25, 1.4, '#1CB0F6')),
+}
+
+KIDNEY_ICON = svg(200, 200, kidney(-18, 0, 1.0, face='happy', ureter=False))
+ICONS['kidney'] = KIDNEY_ICON
+
+
 if __name__ == '__main__':
     os.makedirs(f'{ROOT}/illustrations', exist_ok=True)
     os.makedirs(f'{ROOT}/drinks', exist_ok=True)
@@ -312,4 +406,10 @@ if __name__ == '__main__':
     for name, content in DRINKS.items():
         open(f'{ROOT}/drinks/{name}.svg', 'w').write(content)
     open(f'{ROOT}/icon/app_icon.svg', 'w').write(ICON)
+    os.makedirs(f'{ROOT}/mascot', exist_ok=True)
+    os.makedirs(f'{ROOT}/icons', exist_ok=True)
+    for name, content in MASCOTS.items():
+        open(f'{ROOT}/mascot/{name}.svg', 'w').write(content)
+    for name, content in ICONS.items():
+        open(f'{ROOT}/icons/{name}.svg', 'w').write(content)
     print('ok', len(ILLUSTRATIONS), len(DRINKS))

@@ -4,10 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../data/kidney_tips.dart';
-import '../data/reminders.dart';
 import '../hydration_controller.dart';
-import '../models/drink.dart';
-import '../models/game.dart';
+import '../models/plan.dart';
 import '../theme/duo.dart';
 import '../widgets/duo_widgets.dart';
 import '../widgets/reward_feedback.dart';
@@ -56,69 +54,69 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _onTapSlot(int index) async {
-    final hour = reminderHours[index];
+    final reminder = _c.reminders[index];
     final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
     switch (_c.slotState(index)) {
       case SlotState.locked:
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Ce rappel s\'ouvre à ${formatHour(hour)} 🔒'),
+            content: Text('Cette alerte s\'ouvre à ${reminder.time} 🔒'),
           ),
         );
       case SlotState.done:
-        if (await _confirmUncheck(hour) == true) await _c.toggle(hour);
+        if (await _confirmUncheck(reminder) == true) await _c.toggle(reminder);
       case SlotState.current || SlotState.missed:
-        final reward = await _c.toggle(hour);
+        final reward = await _c.toggle(reminder);
         if (!mounted) return;
         final tip = kidneyTips[tipIndexFor(_c.now().weekday, index)];
         await showReward(context, reward, message: tip.short);
     }
   }
 
-  Future<bool?> _confirmUncheck(int hour) => showModalBottomSheet<bool>(
-    context: context,
-    backgroundColor: Colors.white,
-    builder: (context) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Décocher le rappel de ${formatHour(hour)} ?',
-              style: Duo.heading,
-              textAlign: TextAlign.center,
+  Future<bool?> _confirmUncheck(Reminder reminder) =>
+      showModalBottomSheet<bool>(
+        context: context,
+        backgroundColor: Colors.white,
+        builder: (context) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Décocher l\'alerte de ${reminder.time} ?',
+                  style: Duo.heading,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Les XP gagnés seront retirés.',
+                  style: Duo.body,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 18),
+                DuoButton(
+                  label: 'Décocher',
+                  color: Duo.red,
+                  shadow: Duo.redDark,
+                  onPressed: () => Navigator.of(context).pop(true),
+                ),
+                const SizedBox(height: 10),
+                DuoButton.outline(
+                  label: 'Annuler',
+                  onPressed: () => Navigator.of(context).pop(false),
+                ),
+              ],
             ),
-            const SizedBox(height: 6),
-            const Text(
-              'Les XP gagnés seront retirés.',
-              style: Duo.body,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 18),
-            DuoButton(
-              label: 'Décocher',
-              color: Duo.red,
-              shadow: Duo.redDark,
-              onPressed: () => Navigator.of(context).pop(true),
-            ),
-            const SizedBox(height: 10),
-            DuoButton.outline(
-              label: 'Annuler',
-              onPressed: () => Navigator.of(context).pop(false),
-            ),
-          ],
+          ),
         ),
-      ),
-    ),
-  );
+      );
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: _c,
       builder: (context, _) {
-        final settings = _c.settings!;
         return SafeArea(
           child: Column(
             children: [
@@ -129,11 +127,11 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
                   children: [
                     _DayBanner(controller: _c),
                     const SizedBox(height: 16),
-                    _mascot(settings),
+                    _mascot(),
                     const SizedBox(height: 16),
                     LayoutBuilder(
                       builder: (context, constraints) =>
-                          _path(settings, constraints.maxWidth),
+                          _path(constraints.maxWidth),
                     ),
                   ],
                 ),
@@ -145,59 +143,60 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _mascot(DrinkSettings settings) {
-    final now = _c.now();
-    final current = currentSlotIndex(now);
-    final next = nextSlotIndex(now);
+  Widget _mascot() {
+    final reminders = _c.reminders;
+    final current = _c.currentIndex;
+    final next = _c.nextIndex;
+    final name = _c.profile?.firstName ?? '';
     final missed = [
-      for (var i = 0; i < reminderHours.length; i++)
+      for (var i = 0; i < reminders.length; i++)
         if (_c.slotState(i) == SlotState.missed) i,
     ];
     final (pose, text) = _c.goalReached
         ? (
             'mascot_cheer',
-            'Journée parfaite ! Reviens demain pour garder ta flamme.',
+            'Journée parfaite, $name ! Reviens demain pour garder ta flamme.',
           )
-        : current != null && !_c.isChecked(reminderHours[current])
-        ? (
-            'mascot_drink',
-            'C\'est l\'heure ! Bois ${settings.doseLabel} puis touche '
-                'l\'étape de ${formatHour(reminderHours[current])}.',
-          )
-        : missed.isNotEmpty
-        ? (
-            'mascot_sad',
-            'Tu as oublié ${missed.length} rappel${missed.length > 1 ? 's' : ''}. '
-                'Pas de panique, tu peux encore rattraper !',
-          )
-        : next == 0
-        ? (
-            'mascot_happy',
-            'Le premier rappel est à ${formatHour(reminderHours[0])}.',
-          )
-        : (
-            'mascot_happy',
-            next == null
-                ? 'Bravo ! Rendez-vous demain à ${formatHour(reminderHours[0])}.'
-                : 'Bravo ! Prochain rappel à ${formatHour(reminderHours[next])}.',
-          );
+        : current != null && !_c.isChecked(reminders[current])
+            ? (
+                'mascot_drink',
+                '$name, lève-toi et bois ${formatLiters(reminders[current].ml)} ! '
+                    'Puis touche l\'étape de ${reminders[current].time}.',
+              )
+            : missed.isNotEmpty
+                ? (
+                    'mascot_sad',
+                    'Tu as oublié ${missed.length} alerte${missed.length > 1 ? 's' : ''}. '
+                        'Pas de panique, tu peux encore rattraper !',
+                  )
+                : next == 0
+                    ? (
+                        'mascot_happy',
+                        'Salut $name ! Première alerte à ${reminders[0].time}.',
+                      )
+                    : (
+                        'mascot_happy',
+                        next == null
+                            ? 'Bravo ! Rendez-vous demain à ${reminders[0].time}.'
+                            : 'Bravo ! Prochaine alerte à ${reminders[next].time}.',
+                      );
     return MascotSays(pose: pose, text: text, size: 96);
   }
 
-  Widget _path(DrinkSettings settings, double width) {
+  Widget _path(double width) {
     const node = 76.0;
     final amplitude = (width - node) / 2 - 24;
+    final reminders = _c.reminders;
     return Column(
       children: [
-        for (var i = 0; i < reminderHours.length; i++)
+        for (var i = 0; i < reminders.length; i++)
           Transform.translate(
-            offset: Offset(_zigzag[i] * amplitude, 0),
+            offset: Offset(_zigzag[i % _zigzag.length] * amplitude, 0),
             child: Padding(
               padding: const EdgeInsets.only(bottom: 18),
               child: _PathNode(
-                hour: reminderHours[i],
+                reminder: reminders[i],
                 state: _c.slotState(i),
-                drinkAsset: settings.type.asset,
                 onTap: () => _onTapSlot(i),
               ),
             ),
@@ -258,7 +257,7 @@ class _DayBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = controller;
-    final remaining = streakMinChecks - c.checkedCount;
+    final remaining = c.streakMinChecks - c.checkedCount;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -272,7 +271,7 @@ class _DayBanner extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'AUJOURD\'HUI · ${c.checkedCount}/${reminderHours.length} RAPPELS',
+            'AUJOURD\'HUI · ${c.checkedCount}/${c.reminders.length} ALERTES',
             style: Duo.label.copyWith(color: Colors.white70),
           ),
           const SizedBox(height: 4),
@@ -294,8 +293,8 @@ class _DayBanner extends StatelessWidget {
               Expanded(
                 child: Text(
                   remaining > 0
-                      ? 'Encore $remaining rappel${remaining > 1 ? 's' : ''} '
-                            'pour garder ta flamme'
+                      ? 'Encore $remaining alerte${remaining > 1 ? 's' : ''} '
+                          'pour garder ta flamme'
                       : 'Flamme assurée pour aujourd\'hui !',
                   style: const TextStyle(
                     fontFamily: Duo.font,
@@ -314,15 +313,13 @@ class _DayBanner extends StatelessWidget {
 
 class _PathNode extends StatelessWidget {
   const _PathNode({
-    required this.hour,
+    required this.reminder,
     required this.state,
-    required this.drinkAsset,
     required this.onTap,
   });
 
-  final int hour;
+  final Reminder reminder;
   final SlotState state;
-  final String drinkAsset;
   final VoidCallback onTap;
 
   @override
@@ -335,30 +332,34 @@ class _PathNode extends StatelessWidget {
     };
     final icon = switch (state) {
       SlotState.done => const Icon(
-        Icons.check_rounded,
-        color: Colors.white,
-        size: 42,
-      ),
-      SlotState.locked => SvgPicture.asset(
-        'assets/icons/lock.svg',
-        width: 34,
-        height: 34,
-      ),
-      _ => Container(
-        padding: const EdgeInsets.all(6),
-        decoration: const BoxDecoration(
+          Icons.check_rounded,
           color: Colors.white,
-          shape: BoxShape.circle,
+          size: 42,
         ),
-        child: SvgPicture.asset(drinkAsset, width: 34, height: 34),
-      ),
+      SlotState.locked => SvgPicture.asset(
+          'assets/icons/lock.svg',
+          width: 34,
+          height: 34,
+        ),
+      _ => Container(
+          padding: const EdgeInsets.all(6),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+          ),
+          child: SvgPicture.asset(
+            'assets/drinks/glass.svg',
+            width: 34,
+            height: 34,
+          ),
+        ),
     };
     return Semantics(
       button: true,
-      label: '${formatHour(hour)}, $status',
+      label: '${reminder.time}, $status',
       excludeSemantics: true,
       child: GestureDetector(
-        key: ValueKey('slot_$hour'),
+        key: ValueKey('slot_${reminder.time}'),
         onTap: onTap,
         child: Column(
           children: [
@@ -394,7 +395,7 @@ class _PathNode extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              formatHour(hour),
+              '${reminder.time} · ${formatLiters(reminder.ml)}',
               style: Duo.heading.copyWith(
                 fontSize: 16,
                 color: state == SlotState.locked ? Duo.gray : Duo.text,

@@ -2,23 +2,24 @@ import 'package:flutter/foundation.dart';
 
 import 'data/hydration_store.dart';
 import 'data/kidney_tips.dart';
-import 'data/reminders.dart';
-import 'models/drink.dart';
 import 'models/game.dart';
+import 'models/plan.dart';
+import 'models/profile.dart';
 import 'services/reminder_scheduler.dart';
 
 enum SlotState { done, current, missed, locked }
 
-/// État de l'appli : la boisson choisie, les rappels cochés aujourd'hui et la
-/// progression du jeu (XP, niveau, flamme, badges).
+/// État de l'appli : le profil, les alertes, ce qui est coché aujourd'hui et
+/// la progression du jeu (XP, niveau, flamme, badges).
 class HydrationController extends ChangeNotifier {
   HydrationController({
     required HydrationStore store,
     required this.scheduler,
     DateTime Function()? clock,
-  }) : _store = store,
-       _clock = clock ?? DateTime.now {
-    _settings = store.settings;
+  })  : _store = store,
+        _clock = clock ?? DateTime.now {
+    _profile = store.profile;
+    _plan = store.plan;
     _stats = store.stats;
     _loadDay();
   }
@@ -27,13 +28,18 @@ class HydrationController extends ChangeNotifier {
   final ReminderScheduler scheduler;
   final DateTime Function() _clock;
 
-  DrinkSettings? _settings;
+  UserProfile? _profile;
+  HydrationPlan? _plan;
   late GameStats _stats;
   late DateTime _day;
   late Map<int, int> _checks;
   late int _streak;
 
-  DrinkSettings? get settings => _settings;
+  UserProfile? get profile => _profile;
+  HydrationPlan? get plan => _plan;
+  bool get isSetUp => _profile != null && _plan != null;
+  List<Reminder> get reminders => _plan?.reminders ?? const [];
+
   GameStats get stats => _stats;
   DateTime now() => _clock();
 
@@ -44,21 +50,29 @@ class HydrationController extends ChangeNotifier {
   /// Meilleure série, en comptant la série en cours.
   int get bestStreak =>
       _streak > _stats.bestStreak ? _streak : _stats.bestStreak;
-  bool get streakSafeToday => _checks.length >= streakMinChecks;
+  int get streakMinChecks => _plan?.streakMinChecks ?? 0;
+  bool get streakSafeToday =>
+      streakMinChecks > 0 && _checks.length >= streakMinChecks;
 
-  bool isChecked(int hour) => _checks.containsKey(hour);
-  int get checkedCount => _checks.length;
-  bool get goalReached => _checks.length == reminderHours.length;
+  bool isChecked(Reminder r) => _checks.containsKey(r.minutes);
+  int get checkedCount =>
+      reminders.where((r) => _checks.containsKey(r.minutes)).length;
+  bool get goalReached =>
+      reminders.isNotEmpty && checkedCount == reminders.length;
   int get drunkMl => _checks.values.fold(0, (sum, ml) => sum + ml);
-  int get goalMl => (_settings?.doseMl ?? 0) * reminderHours.length;
+  int get goalMl => _plan?.goalMl ?? 0;
 
   bool isTipRead(int index) => _stats.readTips.contains(index);
 
+  int? get currentIndex => _plan?.currentIndex(now());
+  int? get nextIndex => _plan?.nextIndex(now());
+
   SlotState slotState(int index) {
-    final hour = reminderHours[index];
-    if (isChecked(hour)) return SlotState.done;
-    if (index == currentSlotIndex(now())) return SlotState.current;
-    return now().hour >= hour ? SlotState.missed : SlotState.locked;
+    final r = reminders[index];
+    if (isChecked(r)) return SlotState.done;
+    if (index == currentIndex) return SlotState.current;
+    final m = now().hour * 60 + now().minute;
+    return m >= r.minutes ? SlotState.missed : SlotState.locked;
   }
 
   /// Change de jour si minuit est passé depuis le dernier affichage.
@@ -70,16 +84,32 @@ class HydrationController extends ChangeNotifier {
     }
   }
 
-  /// Coche ou décoche un rappel ; renvoie ce que ça rapporte.
-  Future<Reward> toggle(int hour) async {
-    final settings = _settings;
-    if (settings == null) return const Reward();
+  /// Enregistre le questionnaire du premier lancement.
+  Future<void> saveProfile(UserProfile profile) async {
+    _profile = profile;
+    notifyListeners();
+    await _store.saveProfile(profile);
+  }
+
+  /// Enregistre les alertes et les programme sur le téléphone.
+  Future<void> savePlan(HydrationPlan plan) async {
+    _plan = plan;
+    _streak = _store.streak(_day, plan.streakMinChecks);
+    notifyListeners();
+    await _store.savePlan(plan);
+    await scheduler.requestPermission();
+    await scheduler.scheduleAll(plan, _profile);
+  }
+
+  /// Coche ou décoche une alerte ; renvoie ce que ça rapporte.
+  Future<Reward> toggle(Reminder reminder) async {
+    if (_plan == null) return const Reward();
     refreshDay();
     final before = _stats;
     final wasPerfect = goalReached;
-    final removedMl = _checks.remove(hour);
-    if (removedMl == null) _checks[hour] = settings.doseMl;
+    final removedMl = _checks.remove(reminder.minutes);
     final checked = removedMl == null;
+    if (checked) _checks[reminder.minutes] = reminder.ml;
 
     var perfectDays = before.perfectDays;
     if (goalReached && !wasPerfect) perfectDays++;
@@ -87,10 +117,10 @@ class HydrationController extends ChangeNotifier {
 
     // La série se calcule à partir de l'historique enregistré.
     await _store.saveChecks(_day, _checks);
-    _streak = _store.streak(_day);
+    _streak = _store.streak(_day, streakMinChecks);
     _stats = before.copyWith(
       totalChecks: before.totalChecks + (checked ? 1 : -1),
-      totalMl: before.totalMl + (checked ? settings.doseMl : -removedMl),
+      totalMl: before.totalMl + (checked ? reminder.ml : -removedMl),
       perfectDays: perfectDays,
       bestStreak: _streak > before.bestStreak ? _streak : before.bestStreak,
     );
@@ -103,14 +133,6 @@ class HydrationController extends ChangeNotifier {
     final before = _stats;
     _stats = before.copyWith(readTips: {...before.readTips, index});
     return _finish(before);
-  }
-
-  Future<void> saveSettings(DrinkSettings settings) async {
-    _settings = settings;
-    notifyListeners();
-    await _store.saveSettings(settings);
-    await scheduler.requestPermission();
-    await scheduler.scheduleAll(settings);
   }
 
   Future<Reward> _finish(GameStats before, {bool goalReached = false}) async {
@@ -133,22 +155,24 @@ class HydrationController extends ChangeNotifier {
   }
 
   bool _earned(Achievement badge) => switch (badge) {
-    Achievement.firstSip => _stats.totalChecks >= 1,
-    Achievement.perfectDay => _stats.perfectDays >= 1,
-    Achievement.streak3 => _streak >= 3,
-    Achievement.streak7 => _streak >= 7,
-    Achievement.streak30 => _streak >= 30,
-    Achievement.earlyBird => isChecked(reminderHours.first),
-    Achievement.nightOwl => isChecked(reminderHours.last),
-    Achievement.liters10 => _stats.totalMl >= 10000,
-    Achievement.liters50 => _stats.totalMl >= 50000,
-    Achievement.allTips => _stats.readTips.length == kidneyTips.length,
-  };
+        Achievement.firstSip => _stats.totalChecks >= 1,
+        Achievement.perfectDay => _stats.perfectDays >= 1,
+        Achievement.streak3 => _streak >= 3,
+        Achievement.streak7 => _streak >= 7,
+        Achievement.streak30 => _streak >= 30,
+        Achievement.earlyBird =>
+          reminders.isNotEmpty && isChecked(reminders.first),
+        Achievement.nightOwl =>
+          reminders.length > 1 && isChecked(reminders.last),
+        Achievement.liters10 => _stats.totalMl >= 10000,
+        Achievement.liters50 => _stats.totalMl >= 50000,
+        Achievement.allTips => _stats.readTips.length == kidneyTips.length,
+      };
 
   void _loadDay() {
     _day = _today();
     _checks = _store.checks(_day);
-    _streak = _store.streak(_day);
+    _streak = _store.streak(_day, streakMinChecks);
   }
 
   DateTime _today() {

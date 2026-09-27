@@ -3,12 +3,12 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../data/kidney_tips.dart';
 import '../hydration_controller.dart';
-import '../models/drink.dart';
+import '../models/plan.dart';
 import '../theme/duo.dart';
 import '../widgets/duo_widgets.dart';
 import 'onboarding_screen.dart';
 
-/// Statistiques et réglages de la boisson.
+/// Statistiques et réglages des alertes.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key, required this.controller});
 
@@ -20,7 +20,8 @@ class ProfileScreen extends StatelessWidget {
       listenable: controller,
       builder: (context, _) {
         final stats = controller.stats;
-        final settings = controller.settings!;
+        final profile = controller.profile;
+        final plan = controller.plan!;
         return SafeArea(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
@@ -37,11 +38,20 @@ class ProfileScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Mon profil', style: Duo.title),
+                        Text(
+                          profile?.firstName ?? 'Mon profil',
+                          style: Duo.title,
+                        ),
+                        if (profile != null && profile.email.isNotEmpty)
+                          Text(
+                            profile.email,
+                            style: Duo.body.copyWith(fontSize: 14),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         Text(
                           'Niveau ${controller.level.number} · '
                           '${controller.level.name}',
-                          style: Duo.body,
+                          style: Duo.body.copyWith(color: Duo.goldDark),
                         ),
                       ],
                     ),
@@ -88,32 +98,38 @@ class ProfileScreen extends StatelessWidget {
                 style: Duo.body.copyWith(fontSize: 14),
               ),
               const SizedBox(height: 24),
-              const Text('MA BOISSON', style: Duo.label),
+              const Text('MES ALERTES', style: Duo.label),
               const SizedBox(height: 10),
               DuoCard(
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SvgPicture.asset(settings.type.asset, width: 52),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(settings.doseLabel, style: Duo.heading),
+                    Text(
+                      '${plan.rhythm.label} · ${formatLiters(plan.goalMl)} '
+                      'par jour',
+                      style: Duo.heading.copyWith(fontSize: 16),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final r in plan.reminders)
                           Text(
-                            'à chaque rappel · objectif '
-                            '${formatLiters(controller.goalMl)}',
-                            style: Duo.body.copyWith(fontSize: 14),
+                            '${r.time}  ${formatLiters(r.ml)}',
+                            style: Duo.body.copyWith(
+                              fontSize: 14,
+                              color: Duo.blueDark,
+                            ),
                           ),
-                        ],
-                      ),
+                      ],
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 14),
               DuoButton(
-                label: 'Modifier ma boisson',
+                label: 'Modifier mes alertes',
                 color: Duo.blue,
                 shadow: Duo.blueDark,
                 onPressed: () => Navigator.of(context).push(
@@ -127,16 +143,17 @@ class ProfileScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               DuoButton.outline(
-                label: 'Tester un rappel',
+                label: 'Faire sonner un essai',
                 icon: Icons.notifications_active_rounded,
                 onPressed: () async {
                   final messenger = ScaffoldMessenger.of(context);
                   await controller.scheduler.requestPermission();
-                  await controller.scheduler.showTest(settings);
+                  await controller.scheduler.showTest(
+                    plan.reminders.first,
+                    profile,
+                  );
                   messenger.showSnackBar(
-                    const SnackBar(
-                      content: Text('Notification d\'essai envoyée'),
-                    ),
+                    const SnackBar(content: Text('Alerte d\'essai envoyée')),
                   );
                 },
               ),

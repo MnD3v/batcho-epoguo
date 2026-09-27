@@ -5,9 +5,6 @@ const xpPerCheck = 10;
 const xpPerfectDay = 30;
 const xpPerTip = 5;
 
-/// Nombre de rappels cochés dans la journée pour garder sa flamme.
-const streakMinChecks = 5;
-
 class Level {
   const Level(this.number, this.name, this.minXp);
 
@@ -36,13 +33,13 @@ Level? nextLevel(Level level) =>
 enum Achievement {
   firstSip(
     'Première gorgée',
-    'Coche ton premier rappel',
+    'Coche ta première alerte',
     'assets/icons/drop.svg',
     Color(0xFF1CB0F6),
   ),
   perfectDay(
     'Journée parfaite',
-    'Coche les 7 rappels d\'une journée',
+    'Coche toutes les alertes d\'une journée',
     'assets/icons/star.svg',
     Color(0xFFFFC800),
   ),
@@ -66,13 +63,13 @@ enum Achievement {
   ),
   earlyBird(
     'Lève-tôt',
-    'Bois au rappel de 7h',
+    'Bois à ta première alerte du jour',
     'assets/icons/sunrise.svg',
     Color(0xFFFF9600),
   ),
   nightOwl(
     'Sprint final',
-    'Bois au rappel de 19h',
+    'Bois à ta dernière alerte du jour',
     'assets/icons/moon.svg',
     Color(0xFF8E7CF0),
   ),

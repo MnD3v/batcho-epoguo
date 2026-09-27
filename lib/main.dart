@@ -15,8 +15,8 @@ Future<void> main() async {
   await scheduler.init();
   final controller = HydrationController(store: store, scheduler: scheduler);
   // Reprogramme à chaque lancement : utile si le fuseau horaire a changé.
-  final settings = controller.settings;
-  if (settings != null) scheduler.scheduleAll(settings);
+  final plan = controller.plan;
+  if (plan != null) scheduler.scheduleAll(plan, controller.profile);
   runApp(BoisEtVisApp(controller: controller));
 }
 
@@ -34,9 +34,9 @@ class BoisEtVisApp extends StatelessWidget {
       supportedLocales: const [Locale('fr')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: Duo.theme(),
-      home: controller.settings == null
-          ? OnboardingScreen(controller: controller, isFirstRun: true)
-          : MainShell(controller: controller),
+      home: controller.isSetUp
+          ? MainShell(controller: controller)
+          : OnboardingScreen(controller: controller, isFirstRun: true),
     );
   }
 }

@@ -5,12 +5,21 @@ Application Flutter (Android et iOS) qui rappelle de boire de l'eau **toutes les
 
 ## Fonctionnalités
 
-- **Choix de la boisson** : pure water (sachet de 0,5 L), verre (200 à 330 ml) ou bouteille (330 ml à 1 L),
-  et le nombre à boire à chaque rappel.
-- **Notifications locales** à chaque créneau, avec un conseil différent selon le jour et l'heure.
-- **Cocher les rappels** : un simple coche par créneau, la jauge d'eau montre le total bu et l'objectif du jour.
-- **Conseils illustrés** sur les reins : calculs rénaux, infections urinaires, déshydratation, chaleur,
-  couleur de l'urine, tension et diabète, médicaments.
+Design façon jeu (style Duolingo) : couleurs vives, boutons en relief, police **Plus Jakarta Sans**,
+et **Reno**, le rein mascotte, qui guide et encourage.
+
+- **Premier lancement, une question par écran** : prénom et e-mail, quantité d'eau bue par jour
+  (moins de 1 L, environ 1,5 L, environ 2 L, plus de 2 L), difficultés (oubli, pas envie, pas d'eau
+  à côté, trop occupé), puis les alertes.
+- **Alertes** : toutes les 2 h ou toutes les 3 h (de 7h à 20h), ou à des heures précises avec la
+  quantité de chacune (ex. 9h 0,5 L, 12h 0,5 L…), 8 alertes au plus.
+- **Le téléphone sonne** comme un réveil : « Awa, lève-toi et bois ton eau ! », avec la quantité et
+  le message « Une greffe de rein coûte plus de 15 000 000 FCFA ».
+- **Parcours du jour** : les alertes en zigzag, à cocher. L'étape en cours s'ouvre à l'heure de
+  l'alerte, les oubliées peuvent être rattrapées, les suivantes sont verrouillées.
+- **XP et niveaux** : +10 XP par alerte cochée, +30 XP pour une journée parfaite, +5 XP par leçon lue.
+- **Flamme** : jours d'affilée avec au moins 70 % des alertes cochées.
+- **Badges**, **leçons illustrées** sur les reins et **profil** (statistiques, modifier ses alertes).
 
 Les données restent sur le téléphone (`shared_preferences`), rien n'est envoyé en ligne.
 
@@ -26,11 +35,12 @@ flutter test
 
 | Dossier | Contenu |
 | --- | --- |
-| `lib/models/` | Boissons et quantités |
-| `lib/data/` | Créneaux de rappel, conseils sur les reins, sauvegarde locale |
-| `lib/services/` | Programmation des notifications |
-| `lib/screens/`, `lib/widgets/` | Écrans (choix de la boisson, accueil) et composants |
-| `assets/illustrations/`, `assets/drinks/` | Dessins SVG |
+| `lib/models/` | Profil, alertes (`plan.dart`), XP, niveaux et badges (`game.dart`) |
+| `lib/data/` | Conseils sur les reins, sauvegarde locale |
+| `lib/services/` | Programmation des alertes |
+| `lib/theme/duo.dart`, `lib/widgets/` | Couleurs, police, boutons en relief, mascotte, écrans de victoire |
+| `lib/screens/` | Questionnaire, parcours, leçons, succès, profil |
+| `assets/` | Dessins SVG, police Plus Jakarta Sans (licence OFL), icône |
 | `tool/generate_illustrations.py` | Script qui génère les dessins SVG et l'icône |
 
 Pour modifier les dessins : éditer `tool/generate_illustrations.py`, lancer `python3 tool/generate_illustrations.py`,
