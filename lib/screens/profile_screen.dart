@@ -73,11 +73,7 @@ class ProfileScreen extends StatelessWidget {
                             SettingsScreen(controller: controller, auth: auth),
                       ),
                     ),
-                    icon: const Icon(
-                      Icons.settings_rounded,
-                      color: Duo.gray,
-                      size: 30,
-                    ),
+                    icon: const GameIcon('settings', size: 32),
                   ),
                 ],
               ),
@@ -128,7 +124,7 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: 14),
               DuoButton(
                 label: 'Partager ma progression',
-                icon: Icons.share_rounded,
+                icon: 'share',
                 onPressed: () => shareProgress(
                   context,
                   headline: controller.streak > 0

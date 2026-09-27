@@ -192,7 +192,7 @@ class CelebrationScreen extends StatelessWidget {
                   const Spacer(),
                   DuoButton.outline(
                     label: 'Partager',
-                    icon: Icons.share_rounded,
+                    icon: 'share',
                     onPressed: () => shareProgress(
                       context,
                       headline: title,

@@ -99,7 +99,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
   List<Widget> _friendsContent(String week) => [
         if (_s.error != null) ...[
           const SizedBox(height: 12),
-          ErrorBanner(_s.error!),
+          ErrorBanner(
+            _s.error!,
+            icon: _s.offline ? 'offline' : 'warning',
+          ),
         ],
         const SizedBox(height: 16),
         for (final challenge in _s.challenges) ...[
@@ -226,7 +229,7 @@ class _ChallengeCard extends StatelessWidget {
           const SizedBox(height: 10),
           DuoButton.outline(
             label: 'Inviter sur WhatsApp',
-            icon: Icons.person_add_alt_1_rounded,
+            icon: 'add_friend',
             onPressed: onInvite,
           ),
         ],
@@ -325,7 +328,7 @@ class _ReferralCard extends StatelessWidget {
           const SizedBox(height: 10),
           DuoButton(
             label: 'Partager mon code',
-            icon: Icons.share_rounded,
+            icon: 'share',
             onPressed: code == null ? null : onShare,
           ),
         ],

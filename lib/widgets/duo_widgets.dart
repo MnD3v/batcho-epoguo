@@ -6,6 +6,33 @@ import '../services/read_aloud.dart';
 import '../theme/duo.dart';
 import 'motion.dart';
 
+/// Icône colorée façon jeu (assets/icons/[name].svg) ; grisée si inactive.
+class GameIcon extends StatelessWidget {
+  const GameIcon(this.name, {super.key, this.size = 28, this.enabled = true});
+
+  final String name;
+  final double size;
+  final bool enabled;
+
+  static const _grayscale = ColorFilter.matrix(<double>[
+    0.2126, 0.7152, 0.0722, 0, 0, //
+    0.2126, 0.7152, 0.0722, 0, 0, //
+    0.2126, 0.7152, 0.0722, 0, 0, //
+    0, 0, 0, 0.5, 0,
+  ]);
+
+  @override
+  Widget build(BuildContext context) {
+    final picture = SvgPicture.asset(
+      'assets/icons/$name.svg',
+      width: size,
+      height: size,
+    );
+    if (enabled) return picture;
+    return ColorFiltered(colorFilter: _grayscale, child: picture);
+  }
+}
+
 /// Bouton en relief qui s'enfonce quand on appuie dessus.
 class DuoButton extends StatefulWidget {
   const DuoButton({
@@ -36,7 +63,9 @@ class DuoButton extends StatefulWidget {
   final Color shadow;
   final Color textColor;
   final Color? borderColor;
-  final IconData? icon;
+
+  /// Nom d'une icône de assets/icons (ex. 'share').
+  final String? icon;
 
   @override
   State<DuoButton> createState() => _DuoButtonState();
@@ -86,8 +115,8 @@ class _DuoButtonState extends State<DuoButton> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (widget.icon != null) ...[
-                  Icon(widget.icon, color: textColor, size: 22),
-                  const SizedBox(width: 8),
+                  GameIcon(widget.icon!, size: 26, enabled: enabled),
+                  const SizedBox(width: 10),
                 ],
                 Flexible(
                   child: FittedBox(
@@ -454,9 +483,12 @@ class _DuoTextFieldState extends State<DuoTextField> {
 
 /// Message d'erreur rouge, façon « mauvaise réponse ».
 class ErrorBanner extends StatelessWidget {
-  const ErrorBanner(this.message, {super.key});
+  const ErrorBanner(this.message, {super.key, this.icon = 'warning'});
 
   final String message;
+
+  /// 'warning' ou 'offline' (pas de réseau).
+  final String icon;
 
   @override
   Widget build(BuildContext context) {
@@ -470,8 +502,8 @@ class ErrorBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_rounded, color: Duo.redDark),
-          const SizedBox(width: 10),
+          PopIn(child: GameIcon(icon, size: 32)),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               message,
@@ -486,17 +518,16 @@ class ErrorBanner extends StatelessWidget {
 
 /// 🔊 Écouter le texte à voix haute.
 class SpeakButton extends StatelessWidget {
-  const SpeakButton({super.key, required this.text, this.color = Duo.blue});
+  const SpeakButton({super.key, required this.text});
 
   final String text;
-  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
       tooltip: 'Écouter',
       onPressed: () => ReadAloud.instance.speak(text),
-      icon: Icon(Icons.volume_up_rounded, color: color),
+      icon: const GameIcon('speaker', size: 30),
     );
   }
 }

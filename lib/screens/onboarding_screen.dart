@@ -400,8 +400,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   onPressed: reminders.length > 1
                       ? () => update([...reminders]..removeAt(i))
                       : null,
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  color: Duo.gray,
+                  icon: GameIcon('trash', enabled: reminders.length > 1),
                 ),
               ],
             ),
@@ -409,7 +408,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
       DuoButton.outline(
         label: 'Ajouter une heure',
-        icon: Icons.add_alarm_rounded,
+        icon: 'alarm_add',
         onPressed: canAdd
             ? () => update([
                   ...reminders,
@@ -609,7 +608,7 @@ class _TimeChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.alarm_rounded, color: Duo.blue, size: 20),
+          const GameIcon('alarm', size: 22),
           const SizedBox(width: 6),
           Text(
             time,

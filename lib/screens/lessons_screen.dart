@@ -64,11 +64,7 @@ class LessonsScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         controller.isTipRead(i)
-                            ? const Icon(
-                                Icons.check_circle_rounded,
-                                color: Duo.green,
-                                size: 30,
-                              )
+                            ? const GameIcon('check_badge', size: 30)
                             : Text(
                                 '+$xpPerTip XP',
                                 style: Duo.label.copyWith(color: Duo.blue),

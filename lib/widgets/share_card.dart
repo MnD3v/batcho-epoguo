@@ -118,7 +118,7 @@ class _ShareSheetState extends State<_ShareSheet> {
             const SizedBox(height: 16),
             DuoButton(
               label: _busy ? 'Un instant…' : 'Partager sur WhatsApp',
-              icon: Icons.share_rounded,
+              icon: 'share',
               onPressed: _busy ? null : _share,
             ),
           ],

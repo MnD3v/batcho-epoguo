@@ -366,7 +366,7 @@ class _ExtraDrinks extends StatelessWidget {
       children: [
         DuoButton.outline(
           label: '+ J\'ai bu',
-          icon: Icons.local_drink_rounded,
+          icon: 'glass',
           onPressed: onDrink,
         ),
         const SizedBox(height: 6),
@@ -385,11 +385,7 @@ class _ExtraDrinks extends StatelessWidget {
               for (final drink in extras)
                 PopIn(
                   child: InputChip(
-                    avatar: const Icon(
-                      Icons.water_drop_rounded,
-                      color: Duo.blue,
-                      size: 18,
-                    ),
+                    avatar: const GameIcon('drop', size: 20),
                     label: Text(
                       '${drink.time} · ${formatLiters(drink.ml)}',
                       style: Duo.heading.copyWith(fontSize: 13),
@@ -503,7 +499,7 @@ class _HeatCard extends StatelessWidget {
             if (city == null)
               const Icon(Icons.chevron_right_rounded, color: Duo.gray)
             else
-              SpeakButton(text: text, color: Duo.orangeDark),
+              SpeakButton(text: text),
           ],
         ),
       ),

@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import 'data/hydration_store.dart';
@@ -23,6 +24,9 @@ class SocialController extends ChangeNotifier {
   List<Challenge> challenges = const [];
   bool loading = false;
   String? error;
+
+  /// Vrai quand c'est le réseau qui manque (icône nuage triste).
+  bool offline = false;
   int _reportedMl = -1;
 
   String? get referralCode => _store.referralCode;
@@ -57,6 +61,7 @@ class SocialController extends ChangeNotifier {
     if (uid == null) return null;
     loading = true;
     error = null;
+    offline = false;
     notifyListeners();
     Reward? reward;
     try {
@@ -73,7 +78,21 @@ class SocialController extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Amis : $e');
-      error = 'Pas de connexion. Réessaie plus tard.';
+      final code = e is FirebaseException ? e.code : null;
+      offline =
+          code == null || code == 'unavailable' || code == 'deadline-exceeded';
+      error = switch (code) {
+        null ||
+        'unavailable' ||
+        'deadline-exceeded' =>
+          'Pas de connexion internet. Réessaie plus tard.',
+        // Règles Firestore pas publiées ou base pas encore créée.
+        'permission-denied' ||
+        'not-found' ||
+        'failed-precondition' =>
+          'Les défis ne sont pas encore ouverts. Réessaie plus tard.',
+        _ => 'Oups, un souci avec le serveur ($code). Réessaie plus tard.',
+      };
     }
     loading = false;
     notifyListeners();

@@ -103,7 +103,7 @@ class SettingsScreen extends StatelessWidget {
                         child: Column(
                           children: [
                             _Row(
-                              icon: Icons.person_rounded,
+                              icon: 'profile',
                               label: 'Prénom',
                               value: profile?.firstName ?? '',
                               onTap: () => _rename(context),
@@ -111,7 +111,7 @@ class SettingsScreen extends StatelessWidget {
                             if (signedIn) ...[
                               const Divider(height: 2, thickness: 2),
                               _Row(
-                                icon: Icons.mail_rounded,
+                                icon: 'mail',
                                 label: 'E-mail',
                                 value: auth.user.value?.email ?? '',
                               ),
@@ -162,7 +162,7 @@ class SettingsScreen extends StatelessWidget {
                       DuoCard(
                         padding: EdgeInsets.zero,
                         child: _Row(
-                          icon: Icons.wb_sunny_rounded,
+                          icon: 'sun',
                           label: 'Ma ville (mode chaleur)',
                           value: controller.city?.name ?? 'À choisir',
                           onTap: () => pickCity(context, controller),
@@ -185,7 +185,7 @@ class SettingsScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       DuoButton.outline(
                         label: 'Faire sonner un essai',
-                        icon: Icons.notifications_active_rounded,
+                        icon: 'bell_ring',
                         onPressed: plan == null
                             ? null
                             : () async {
@@ -207,7 +207,7 @@ class SettingsScreen extends StatelessWidget {
                         const SizedBox(height: 32),
                         DuoButton.outline(
                           label: 'Se déconnecter',
-                          icon: Icons.logout_rounded,
+                          icon: 'logout',
                           textColor: Duo.text,
                           onPressed: () => _signOut(context),
                         ),
@@ -256,7 +256,7 @@ class _SoundChoice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget option(bool loud, IconData icon, String title, String detail) {
+    Widget option(bool loud, String icon, String title, String detail) {
       final selected = controller.loudAlerts == loud;
       return Expanded(
         child: DuoCard(
@@ -266,7 +266,7 @@ class _SoundChoice extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: selected ? Duo.blue : Duo.gray),
+              GameIcon(icon, size: 34, enabled: selected),
               const SizedBox(height: 6),
               Text(
                 title,
@@ -286,12 +286,12 @@ class _SoundChoice extends StatelessWidget {
       children: [
         option(
           false,
-          Icons.notifications_rounded,
+          'bell',
           'Doux',
           'Son de notification',
         ),
         const SizedBox(width: 10),
-        option(true, Icons.alarm_rounded, 'Fort', 'Sonne comme un réveil'),
+        option(true, 'alarm', 'Fort', 'Sonne comme un réveil'),
       ],
     );
   }
@@ -305,7 +305,7 @@ class _Row extends StatelessWidget {
     this.onTap,
   });
 
-  final IconData icon;
+  final String icon;
   final String label;
   final String value;
   final VoidCallback? onTap;
@@ -319,8 +319,8 @@ class _Row extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Icon(icon, color: Duo.blue),
-            const SizedBox(width: 12),
+            GameIcon(icon, size: 34),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,8 +334,7 @@ class _Row extends StatelessWidget {
                 ],
               ),
             ),
-            if (onTap != null)
-              const Icon(Icons.edit_rounded, color: Duo.gray, size: 20),
+            if (onTap != null) const GameIcon('pencil', size: 26),
           ],
         ),
       ),
