@@ -55,7 +55,7 @@ void main() {
     expect(c.eveningRescueTime, DateTime(2026, 9, 27, 20));
     await c.updateEveningRescue();
     expect(scheduler.eveningAt, DateTime(2026, 9, 27, 20));
-    expect(scheduler.eveningTitle, 'Ta flamme de 1 jour est en danger ! 🔥');
+    expect(scheduler.eveningTitle, '🔥 Ta flamme de 1 jour est en danger !');
 
     // 5 alertes cochées sur 7 : la flamme est assurée, plus d'alerte du soir.
     for (final r in c.reminders.take(5)) {
@@ -77,5 +77,22 @@ void main() {
     expect(c.loudAlerts, isTrue);
     expect(scheduler.scheduledLoud, isTrue);
     expect((await HydrationStore.load()).loudAlerts, isTrue);
+  });
+
+  test('titres avec un emoji au début, visage qui change', () {
+    const nine = Reminder(540, 500);
+    final messages = [
+      for (var slot = 0; slot < 4; slot++)
+        alertMessage(firstName: 'Awa', reminder: nine, weekday: 1, slot: slot),
+    ];
+    for (final m in messages) {
+      expect(RegExp(r'^[^\w\s]').hasMatch(m.title), isTrue, reason: m.title);
+    }
+    expect(messages.first.mood, 3); // bonne humeur le matin
+    expect(messages.map((m) => m.mood).toSet().length, greaterThan(1));
+    expect(
+      eveningRescueMessage(firstName: 'Awa', streak: 3, remaining: 2).mood,
+      0,
+    );
   });
 }

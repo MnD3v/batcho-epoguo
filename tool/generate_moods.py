@@ -1,12 +1,14 @@
 """Les cinq humeurs de Reno, de « très triste » à « très joyeux ».
 
-Affichées en haut du parcours selon l'heure et l'eau bue.
+Affichées en haut du parcours selon l'heure et l'eau bue, et en avatar rond
+dans les notifications (le visage change d'une alerte à l'autre, comme la
+chouette de Duolingo).
 Lancer : python3 tool/generate_moods.py
 """
 import os
 
-from generate_illustrations import (FACES, INK, ROOT, arm, drop, mascot,
-                                    sparkle)
+from generate_illustrations import (FACES, INK, PINK, ROOT, arm, drop, kidney,
+                                    mascot, sparkle, svg)
 
 TEAR = '#4FC3F7'
 
@@ -50,8 +52,30 @@ MOODS = {
                      + sparkle(186, 150, 0.7, TEAR) + sparkle(30, 150, 0.6)),
 }
 
+# Avatars des notifications : le visage seul, sur un rond bleu.
+AVATARS = {
+    'reno_mood_0': ('crying', '#D9A8A8', ''),
+    'reno_mood_1': ('worried', '#E8A0A0', drop(208, 70, 1.3, '#FFFFFF')),
+    'reno_mood_2': ('neutral', PINK, ''),
+    'reno_mood_3': ('happy', PINK, ''),
+    'reno_mood_4': ('joy', PINK, sparkle(206, 60, 1.6, '#FFC800')
+                    + sparkle(52, 196, 1.1, '#FFC800')),
+}
+
+
+def avatar(face, fill, extra):
+    return svg(256, 256, '<circle cx="128" cy="128" r="128" fill="#1CB0F6"/>'
+               '<g transform="translate(128 140) scale(1.05) translate(-118 -100)">'
+               + kidney(-18, 0, 1.0, fill=fill, face=face, ureter=False)
+               + '</g>' + extra)
+
 
 if __name__ == '__main__':
+    import cairosvg
+    for name, (face, fill, extra) in AVATARS.items():
+        cairosvg.svg2png(bytestring=avatar(face, fill, extra).encode(),
+                         write_to=os.path.join(ROOT, 'notif', f'{name}.png'),
+                         output_width=256)
     for name, content in MOODS.items():
         with open(os.path.join(ROOT, 'mascot', f'{name}.svg'), 'w') as f:
             f.write(content)

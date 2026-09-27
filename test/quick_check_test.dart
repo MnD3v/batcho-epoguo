@@ -1,3 +1,4 @@
+import 'package:bois_et_vis/data/alert_messages.dart';
 import 'dart:io';
 
 import 'package:bois_et_vis/data/hydration_store.dart';
@@ -75,5 +76,13 @@ void main() {
       expect(File(path).existsSync(), isTrue, reason: path);
     }
     expect(File('assets/notif/reno_face.png').existsSync(), isTrue);
+  });
+
+  test('un visage de Reno par humeur pour les notifications', () {
+    for (var mood = 0; mood <= 4; mood++) {
+      final path =
+          AlertMessage('', '', mood: mood).avatar.replaceFirst('asset://', '');
+      expect(File(path).existsSync(), isTrue, reason: path);
+    }
   });
 }
