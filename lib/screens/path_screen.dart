@@ -414,42 +414,6 @@ class _MoodCard extends StatelessWidget {
               SpeakButton(text: speech),
             ],
           ),
-          const SizedBox(height: 10),
-          // L'échelle des humeurs : le visage du moment ressort.
-          Row(
-            children: [
-              for (final m in Mood.values)
-                Expanded(
-                  child: AnimatedScale(
-                    scale: m == mood ? 1.25 : 0.85,
-                    duration: const Duration(milliseconds: 400),
-                    curve: Curves.easeOutBack,
-                    child: AnimatedOpacity(
-                      opacity: m == mood ? 1 : 0.35,
-                      duration: const Duration(milliseconds: 400),
-                      child: Column(
-                        children: [
-                          SvgPicture.asset(
-                            'assets/mascot/${m.pose}.svg',
-                            width: 36,
-                            height: 36,
-                          ),
-                          Container(
-                            margin: const EdgeInsets.only(top: 2),
-                            height: 5,
-                            width: 26,
-                            decoration: BoxDecoration(
-                              color: m.color,
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
         ],
       ),
     );
