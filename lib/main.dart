@@ -17,6 +17,7 @@ import 'services/home_widget_sync.dart';
 import 'services/reminder_scheduler.dart';
 import 'services/social_repository.dart';
 import 'services/user_repository.dart';
+import 'services/weather_service.dart';
 import 'theme/duo.dart';
 
 Future<void> main() async {
@@ -48,6 +49,7 @@ Future<void> main() async {
     store: store,
     scheduler: scheduler,
     cloud: cloud,
+    weather: OpenMeteoWeather(),
   );
   // Le widget suit chaque changement ; son bouton coche en arrière-plan.
   controller.addListener(() => HomeWidgetSync.push(controller));
@@ -61,6 +63,7 @@ Future<void> main() async {
   if (auth.user.value != null) {
     await controller.protectStreak();
     controller.rescheduleAlerts();
+    controller.refreshWeather();
   }
   final social = SocialController(
     repository: friends,

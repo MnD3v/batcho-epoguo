@@ -150,6 +150,28 @@ class HydrationStore {
   Future<void> setChallengeCodes(List<String> codes) =>
       _prefs.setStringList(_challengesKey, codes);
 
+  // --- Météo (mode chaleur) ---
+
+  static const _cityKey = 'plan_city';
+  static const _weatherKey = 'weather_today';
+
+  /// Ville choisie pour la météo.
+  String? get city => _prefs.getString(_cityKey);
+
+  Future<void> setCity(String name) => _prefs.setString(_cityKey, name);
+
+  /// Température maximale déjà récupérée pour [day] à [cityName].
+  double? cachedMax(DateTime day, String cityName) {
+    final parts = (_prefs.getString(_weatherKey) ?? '').split('|');
+    if (parts.length != 3 || parts[0] != _dayKey(day) || parts[1] != cityName) {
+      return null;
+    }
+    return double.tryParse(parts[2]);
+  }
+
+  Future<void> cacheMax(DateTime day, String cityName, double max) =>
+      _prefs.setString(_weatherKey, '${_dayKey(day)}|$cityName|$max');
+
   /// Relit les valeurs écrites par un autre isolate (notification, widget).
   Future<void> reload() => _prefs.reload();
 

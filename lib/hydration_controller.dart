@@ -5,12 +5,14 @@ import 'package:flutter/foundation.dart';
 import 'data/hydration_store.dart';
 import 'data/alert_messages.dart';
 import 'data/kidney_tips.dart';
+import 'models/city.dart';
 import 'models/game.dart';
 import 'models/plan.dart';
 import 'models/profile.dart';
 import 'services/auth_service.dart';
 import 'services/reminder_scheduler.dart';
 import 'services/user_repository.dart';
+import 'services/weather_service.dart';
 
 enum SlotState { done, current, missed, locked }
 
@@ -30,6 +32,7 @@ class HydrationController extends ChangeNotifier {
     required HydrationStore store,
     required this.scheduler,
     this.cloud,
+    this.weather,
     DateTime Function()? clock,
   })  : _store = store,
         _clock = clock ?? DateTime.now {
@@ -42,6 +45,9 @@ class HydrationController extends ChangeNotifier {
 
   /// Sauvegarde en ligne ; null dans les tests qui n'en ont pas besoin.
   final UserRepository? cloud;
+
+  /// Météo du jour (mode chaleur) ; null dans les tests qui n'en ont pas besoin.
+  final WeatherService? weather;
   final DateTime Function() _clock;
 
   UserProfile? _profile;
@@ -358,6 +364,36 @@ class HydrationController extends ChangeNotifier {
       freezeEarned: freezeEarned,
       streakMilestone: milestone,
     );
+  }
+
+  // --- Mode chaleur ---
+
+  City? get city => cityNamed(_store.city);
+
+  /// Température maximale prévue aujourd'hui dans sa ville (si connue).
+  double? get todayMax {
+    final c = city;
+    return c == null ? null : _store.cachedMax(_day, c.name);
+  }
+
+  bool get isHotToday => (todayMax ?? 0) >= hotDayCelsius;
+
+  Future<void> setCity(City city) async {
+    await _store.setCity(city.name);
+    notifyListeners();
+    _push();
+    await refreshWeather();
+  }
+
+  /// Une requête par jour au plus ; sans réseau, pas de mode chaleur.
+  Future<void> refreshWeather() async {
+    final c = city;
+    final service = weather;
+    if (c == null || service == null || todayMax != null) return;
+    final max = await service.todayMax(c);
+    if (max == null) return;
+    await _store.cacheMax(_day, c.name, max);
+    notifyListeners();
   }
 
   /// Compte connecté (null hors connexion).

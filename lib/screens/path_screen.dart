@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../data/kidney_tips.dart';
 import '../hydration_controller.dart';
+import '../models/city.dart';
 import '../models/plan.dart';
 import '../theme/duo.dart';
 import '../widgets/duo_widgets.dart';
@@ -53,6 +54,7 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
   Future<void> _refresh() async {
     _c.refreshDay();
     await _c.reload();
+    await _c.refreshWeather();
     if (mounted) setState(() {});
   }
 
@@ -130,6 +132,7 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
                   children: [
                     _DayBanner(controller: _c),
                     const SizedBox(height: 16),
+                    _HeatCard(controller: _c),
                     if (_c.frozenNotice > 0) ...[
                       _FrozenNotice(controller: _c),
                       const SizedBox(height: 16),
@@ -187,7 +190,7 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
                             ? 'Bravo ! Rendez-vous demain à ${reminders[0].time}.'
                             : 'Bravo ! Prochaine alerte à ${reminders[next].time}.',
                       );
-    return MascotSays(pose: pose, text: text, size: 96);
+    return MascotSays(pose: pose, text: text, size: 96, speakable: true);
   }
 
   Widget _path(double width) {
@@ -262,6 +265,94 @@ class _TopBar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Mode chaleur : conseil du jour s'il fait très chaud, sinon invitation à
+/// choisir sa ville.
+class _HeatCard extends StatelessWidget {
+  const _HeatCard({required this.controller});
+
+  final HydrationController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final city = controller.city;
+    final max = controller.todayMax;
+    if (city != null && !controller.isHotToday) return const SizedBox.shrink();
+    final text = city == null
+        ? 'Mode chaleur : choisis ta ville et je te préviens les jours de '
+            'grosse chaleur.'
+        : 'Il fera ${max!.round()} °C à ${city.name} aujourd\'hui : bois '
+            '$hotDayExtraGlasses verres de plus !';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: DuoCard(
+        color: city == null ? Colors.white : const Color(0xFFFFF3E0),
+        onTap: city == null ? () => pickCity(context, controller) : null,
+        child: Row(
+          children: [
+            SvgPicture.asset(
+              'assets/illustrations/sun_heat.svg',
+              width: 56,
+              height: 46,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                text,
+                style: Duo.heading.copyWith(
+                  fontSize: 15,
+                  color: city == null ? Duo.text : Duo.orangeDark,
+                ),
+              ),
+            ),
+            if (city == null)
+              const Icon(Icons.chevron_right_rounded, color: Duo.gray)
+            else
+              SpeakButton(text: text, color: Duo.orangeDark),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Choix de la ville pour la météo.
+Future<void> pickCity(
+  BuildContext context,
+  HydrationController controller,
+) async {
+  final city = await showModalBottomSheet<City>(
+    context: context,
+    backgroundColor: Colors.white,
+    isScrollControlled: true,
+    builder: (context) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.7,
+      builder: (context, scroll) => ListView(
+        controller: scroll,
+        padding: const EdgeInsets.all(20),
+        children: [
+          const Text('Ta ville', style: Duo.heading),
+          const SizedBox(height: 4),
+          const Text(
+            'Pour la météo du jour. Rien d\'autre n\'est partagé.',
+            style: Duo.body,
+          ),
+          const SizedBox(height: 12),
+          for (final c in cities)
+            ListTile(
+              title: Text(c.name, style: Duo.heading.copyWith(fontSize: 16)),
+              trailing: c.name == controller.city?.name
+                  ? const Icon(Icons.check_rounded, color: Duo.green)
+                  : null,
+              onTap: () => Navigator.of(context).pop(c),
+            ),
+        ],
+      ),
+    ),
+  );
+  if (city != null) await controller.setCity(city);
 }
 
 /// « Ton jour de repos a protégé ta flamme », une seule fois.

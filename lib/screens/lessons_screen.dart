@@ -121,6 +121,9 @@ class TipScreen extends StatelessWidget {
                     style: Duo.title,
                     textAlign: TextAlign.center,
                   ),
+                  Center(
+                    child: SpeakButton(text: '${tip.title}. ${tip.text}'),
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     tip.text,

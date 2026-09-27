@@ -1,0 +1,48 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+
+/// Reno lit à voix haute (voix française du téléphone), pour ceux qui
+/// lisent peu.
+class ReadAloud {
+  ReadAloud._();
+
+  static final instance = ReadAloud._();
+
+  FlutterTts? _tts;
+
+  Future<void> speak(String text) async {
+    try {
+      final tts = _tts ??= FlutterTts();
+      await tts.setLanguage('fr-FR');
+      await tts.setSpeechRate(0.45);
+      await tts.stop();
+      await tts.speak(speakable(text));
+    } catch (e) {
+      debugPrint('Lecture à voix haute : $e');
+    }
+  }
+
+  Future<void> stop() async {
+    try {
+      await _tts?.stop();
+    } catch (_) {}
+  }
+}
+
+/// Sans emojis (la voix les épellerait) ; « 0,5 L » → « 0,5 litre ».
+@visibleForTesting
+String speakable(String text) => text
+    .replaceAll(
+      RegExp(
+        r'[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}]',
+        unicode: true,
+      ),
+      '',
+    )
+    .replaceAllMapped(RegExp(r'(\d+(?:,\d+)?) L\b'), (m) {
+      // En français, « litre » ne prend un s qu'à partir de 2.
+      final value = double.parse(m[1]!.replaceAll(',', '.'));
+      return '${m[1]} litre${value >= 2 ? 's' : ''}';
+    })
+    .replaceAll(RegExp(r'\s+'), ' ')
+    .trim();

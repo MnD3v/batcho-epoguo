@@ -42,6 +42,7 @@ dependencies:
   home_widget: ^0.10.0
   awesome_notifications: ^0.12.1
   share_plus: ^13.3.0
+  flutter_tts: ^4.2.5
   flutter_localizations:
     sdk: flutter
 

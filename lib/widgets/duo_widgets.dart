@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../services/read_aloud.dart';
 import '../theme/duo.dart';
 
 /// Bouton en relief qui s'enfonce quand on appuie dessus.
@@ -262,11 +263,15 @@ class MascotSays extends StatelessWidget {
     required this.text,
     this.pose = 'mascot_happy',
     this.size = 110,
+    this.speakable = false,
   });
 
   final String text;
   final String pose;
   final double size;
+
+  /// Bouton 🔊 pour entendre Reno.
+  final bool speakable;
 
   @override
   Widget build(BuildContext context) {
@@ -275,6 +280,7 @@ class MascotSays extends StatelessWidget {
       children: [
         SvgPicture.asset('assets/mascot/$pose.svg', width: size, height: size),
         Expanded(child: SpeechBubble(text: text)),
+        if (speakable) SpeakButton(text: text),
       ],
     );
   }
@@ -461,6 +467,23 @@ class ErrorBanner extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 🔊 Écouter le texte à voix haute.
+class SpeakButton extends StatelessWidget {
+  const SpeakButton({super.key, required this.text, this.color = Duo.blue});
+
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: 'Écouter',
+      onPressed: () => ReadAloud.instance.speak(text),
+      icon: Icon(Icons.volume_up_rounded, color: color),
     );
   }
 }

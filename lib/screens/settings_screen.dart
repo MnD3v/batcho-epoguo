@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../theme/duo.dart';
 import '../widgets/duo_widgets.dart';
 import 'onboarding_screen.dart';
+import 'path_screen.dart' show pickCity;
 
 /// Compte, alertes, déconnexion et suppression du compte.
 class SettingsScreen extends StatelessWidget {
@@ -151,6 +152,16 @@ class SettingsScreen extends StatelessWidget {
                         ),
                       const SizedBox(height: 12),
                       _SoundChoice(controller: controller),
+                      const SizedBox(height: 12),
+                      DuoCard(
+                        padding: EdgeInsets.zero,
+                        child: _Row(
+                          icon: Icons.wb_sunny_rounded,
+                          label: 'Ma ville (mode chaleur)',
+                          value: controller.city?.name ?? 'À choisir',
+                          onTap: () => pickCity(context, controller),
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       DuoButton(
                         label: 'Modifier mes alertes',
