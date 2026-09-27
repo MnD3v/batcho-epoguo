@@ -391,6 +391,13 @@ ICONS = {
                  '<path d="M11 20 L11 41 L37 41 L37 20 L24 10 Z" fill="#FFC800"/>'
                  '<rect x="19" y="27" width="10" height="14" rx="3" fill="#FF9600"/>'),
     'drop': icon(drop(24, 25, 1.4, '#1CB0F6')),
+    # Glaçon : jour de repos qui protège la flamme.
+    'freeze': icon('<rect x="7" y="9" width="34" height="32" rx="8" fill="#84D8FF" '
+                   'stroke="#1CB0F6" stroke-width="3"/>'
+                   '<path d="M14 17 L22 17 M14 23 L19 23" stroke="#FFFFFF" '
+                   'stroke-width="3" stroke-linecap="round"/>'
+                   '<path d="M24 4 L24 12 M20 6 L28 10 M28 6 L20 10" stroke="#1CB0F6" '
+                   'stroke-width="2.5" stroke-linecap="round"/>'),
 }
 
 KIDNEY_ICON = svg(200, 200, kidney(-18, 0, 1.0, face='happy', ureter=False))

@@ -78,9 +78,7 @@ Future<void> showReward(
     ),
   );
   if (!context.mounted) return;
-  if (reward.goalReached ||
-      reward.levelUp != null ||
-      reward.badges.isNotEmpty) {
+  if (reward.worthCelebrating) {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
@@ -98,13 +96,18 @@ class CelebrationScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final level = reward.levelUp;
-    final title = reward.goalReached
-        ? 'Objectif du jour atteint !'
-        : level != null
-            ? 'Niveau ${level.number} : ${level.name} !'
-            : reward.badges.length > 1
-                ? 'Nouveaux badges !'
-                : 'Nouveau badge !';
+    final milestone = reward.streakMilestone;
+    final title = milestone != null
+        ? '$milestone jours de flamme !'
+        : reward.goalReached
+            ? 'Objectif du jour atteint !'
+            : level != null
+                ? 'Niveau ${level.number} : ${level.name} !'
+                : reward.freezeEarned && reward.badges.isEmpty
+                    ? 'Jour de repos gagné !'
+                    : reward.badges.length > 1
+                        ? 'Nouveaux badges !'
+                        : 'Nouveau badge !';
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -130,9 +133,15 @@ class CelebrationScreen extends StatelessWidget {
                 style: Duo.title.copyWith(color: Duo.gold, fontSize: 28),
               ),
               const SizedBox(height: 8),
-              if (reward.goalReached)
+              if (milestone != null)
+                Text(
+                  '$milestone jours d\'affilée : tes reins te disent merci !',
+                  textAlign: TextAlign.center,
+                  style: Duo.body,
+                )
+              else if (reward.goalReached)
                 const Text(
-                  'Tes 7 rappels sont cochés. Reno est au top de sa forme !',
+                  'Toutes tes alertes sont cochées. Reno est au top de sa forme !',
                   textAlign: TextAlign.center,
                   style: Duo.body,
                 ),
@@ -157,6 +166,13 @@ class CelebrationScreen extends StatelessWidget {
                       value: '+${reward.xp}',
                       color: Duo.gold,
                       icon: 'assets/icons/xp.svg',
+                    ),
+                  if (reward.freezeEarned)
+                    const _StatBox(
+                      label: 'Jour de repos',
+                      value: '+1',
+                      color: Duo.blue,
+                      icon: 'assets/icons/freeze.svg',
                     ),
                   for (final badge in reward.badges)
                     _StatBox(

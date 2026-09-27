@@ -61,6 +61,12 @@ enum Achievement {
     'assets/icons/crown.svg',
     Color(0xFFCE82FF),
   ),
+  streak100(
+    'Légende',
+    'Garde ta flamme 100 jours de suite',
+    'assets/icons/trophy.svg',
+    Color(0xFFFF4B4B),
+  ),
   earlyBird(
     'Lève-tôt',
     'Bois à ta première alerte du jour',
@@ -107,10 +113,31 @@ class Reward {
     this.goalReached = false,
     this.badges = const [],
     this.levelUp,
+    this.freezeEarned = false,
+    this.streakMilestone,
   });
 
   final int xp;
   final bool goalReached;
   final List<Achievement> badges;
   final Level? levelUp;
+
+  /// Un jour de repos gagné (tous les 7 jours de flamme).
+  final bool freezeEarned;
+
+  /// 7, 30 ou 100 jours de flamme atteints à l'instant.
+  final int? streakMilestone;
+
+  bool get worthCelebrating =>
+      goalReached ||
+      levelUp != null ||
+      badges.isNotEmpty ||
+      freezeEarned ||
+      streakMilestone != null;
 }
+
+/// Séries de flamme fêtées en grand.
+const streakMilestones = [7, 30, 100];
+
+/// Un jour de repos gagné tous les [freezeEvery] jours de flamme.
+const freezeEvery = 7;

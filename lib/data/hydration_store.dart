@@ -161,7 +161,7 @@ class HydrationStore {
 
   Future<void> markFirstDay(DateTime day) async {
     if (firstDay != null) return;
-    await _prefs.setString(_firstDayKey, _checksKey(day).substring(7));
+    await _prefs.setString(_firstDayKey, _dayKey(day));
   }
 
   /// Total bu un jour donné, en millilitres.
@@ -225,16 +225,48 @@ class HydrationStore {
   int streak(DateTime today, int minChecks) {
     if (minChecks <= 0) return 0;
     var day = DateTime(today.year, today.month, today.day);
-    if (checks(day).length < minChecks) {
+    if (!keepsStreak(day, minChecks)) {
       day = DateTime(day.year, day.month, day.day - 1);
     }
     var count = 0;
-    while (count < _keepDays && checks(day).length >= minChecks) {
-      count++;
+    while (count < _keepDays && keepsStreak(day, minChecks)) {
+      // Un jour de repos protège la série sans la faire grandir.
+      if (!isFrozen(day)) count++;
       day = DateTime(day.year, day.month, day.day - 1);
     }
     return count;
   }
+
+  /// Jour qui garde la flamme : assez d'alertes cochées, ou jour de repos.
+  bool keepsStreak(DateTime day, int minChecks) =>
+      checks(day).length >= minChecks || isFrozen(day);
+
+  // --- Jours de repos (protègent la flamme) ---
+
+  static const _freezesKey = 'stats_freezes';
+  static const _frozenDaysKey = 'stats_frozen_days';
+  static const _freezeAwardedKey = 'stats_freeze_awarded';
+  static const maxFreezes = 2;
+
+  /// Jours de repos en réserve.
+  int get freezes => _prefs.getInt(_freezesKey) ?? 0;
+
+  Future<void> setFreezes(int value) =>
+      _prefs.setInt(_freezesKey, value.clamp(0, maxFreezes));
+
+  /// Longueur de série déjà récompensée par un jour de repos.
+  int get freezeAwardedAt => _prefs.getInt(_freezeAwardedKey) ?? 0;
+
+  Future<void> setFreezeAwardedAt(int streak) =>
+      _prefs.setInt(_freezeAwardedKey, streak);
+
+  bool isFrozen(DateTime day) =>
+      (_prefs.getStringList(_frozenDaysKey) ?? const []).contains(_dayKey(day));
+
+  Future<void> freezeDay(DateTime day) => _prefs.setStringList(
+        _frozenDaysKey,
+        [...?_prefs.getStringList(_frozenDaysKey), _dayKey(day)],
+      );
 
   GameStats get stats => GameStats(
         totalChecks: _prefs.getInt(_totalChecksKey) ?? 0,
@@ -275,8 +307,10 @@ class HydrationStore {
     }
   }
 
-  static String _checksKey(DateTime day) =>
-      '$_checksPrefix${day.year}-${_two(day.month)}-${_two(day.day)}';
+  static String _checksKey(DateTime day) => '$_checksPrefix${_dayKey(day)}';
+
+  static String _dayKey(DateTime day) =>
+      '${day.year}-${_two(day.month)}-${_two(day.day)}';
 
   static String _two(int n) => n.toString().padLeft(2, '0');
 }

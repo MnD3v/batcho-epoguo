@@ -130,6 +130,10 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
                   children: [
                     _DayBanner(controller: _c),
                     const SizedBox(height: 16),
+                    if (_c.frozenNotice > 0) ...[
+                      _FrozenNotice(controller: _c),
+                      const SizedBox(height: 16),
+                    ],
                     _mascot(),
                     const SizedBox(height: 16),
                     LayoutBuilder(
@@ -240,12 +244,51 @@ class _TopBar extends StatelessWidget {
             color: c.streakSafeToday ? Duo.orange : Duo.gray,
             semanticLabel: 'Flamme : ${c.streak} jours',
           ),
+          if (c.freezes > 0)
+            StatChip(
+              icon: 'assets/icons/freeze.svg',
+              value: '${c.freezes}',
+              color: Duo.blue,
+              semanticLabel: '${c.freezes} jour'
+                  '${c.freezes > 1 ? 's' : ''} de repos en réserve',
+            ),
           StatChip(
             icon: 'assets/icons/xp.svg',
             value: '${c.xp}',
             color: Duo.blue,
             semanticLabel: '${c.xp} XP',
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// « Ton jour de repos a protégé ta flamme », une seule fois.
+class _FrozenNotice extends StatelessWidget {
+  const _FrozenNotice({required this.controller});
+
+  final HydrationController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final days = controller.frozenNotice;
+    return DuoCard(
+      color: Duo.blueLight,
+      onTap: controller.clearFrozenNotice,
+      child: Row(
+        children: [
+          SvgPicture.asset('assets/icons/freeze.svg', width: 40, height: 40),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              days > 1
+                  ? 'Ouf ! $days jours de repos ont protégé ta flamme.'
+                  : 'Ouf ! Ton jour de repos a protégé ta flamme.',
+              style: Duo.heading.copyWith(fontSize: 15, color: Duo.blueDark),
+            ),
+          ),
+          const Icon(Icons.close_rounded, color: Duo.blueDark),
         ],
       ),
     );

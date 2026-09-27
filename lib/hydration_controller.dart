@@ -118,6 +118,7 @@ class HydrationController extends ChangeNotifier {
       if (plan != null) await rescheduleAlerts();
       if (data is! Map) _push();
     }
+    await protectStreak();
     // Le prénom du compte fait foi (il peut changer dans les paramètres).
     final profile = _profile;
     final name = user.firstName;
@@ -217,6 +218,7 @@ class HydrationController extends ChangeNotifier {
     if (today != _day) {
       _loadDay();
       notifyListeners();
+      protectStreak();
     }
   }
 
@@ -255,6 +257,7 @@ class HydrationController extends ChangeNotifier {
       _push();
       await updateEveningRescue();
     }
+    await protectStreak();
   }
 
   /// Enregistre le questionnaire du premier lancement.
@@ -334,8 +337,14 @@ class HydrationController extends ChangeNotifier {
     if (!goalReached && wasPerfect) perfectDays--;
 
     // La série se calcule à partir de l'historique enregistré.
+    final streakBefore = _streak;
     await _store.saveChecks(_day, _checks);
     _streak = _store.streak(_day, streakMinChecks);
+    final freezeEarned = await _awardFreeze();
+    final milestone =
+        _streak > streakBefore && streakMilestones.contains(_streak)
+            ? _streak
+            : null;
     _stats = before.copyWith(
       totalChecks: before.totalChecks + (checked ? 1 : -1),
       totalMl: before.totalMl + (checked ? reminder.ml : -removedMl),
@@ -343,7 +352,12 @@ class HydrationController extends ChangeNotifier {
       bestStreak: _streak > before.bestStreak ? _streak : before.bestStreak,
     );
     await updateEveningRescue();
-    return _finish(before, goalReached: goalReached && !wasPerfect);
+    return _finish(
+      before,
+      goalReached: goalReached && !wasPerfect,
+      freezeEarned: freezeEarned,
+      streakMilestone: milestone,
+    );
   }
 
   /// Leçon lue : +5 XP la première fois.
@@ -354,7 +368,12 @@ class HydrationController extends ChangeNotifier {
     return _finish(before);
   }
 
-  Future<Reward> _finish(GameStats before, {bool goalReached = false}) async {
+  Future<Reward> _finish(
+    GameStats before, {
+    bool goalReached = false,
+    bool freezeEarned = false,
+    int? streakMilestone,
+  }) async {
     final newBadges = [
       for (final badge in Achievement.values)
         if (!_stats.badges.contains(badge) && _earned(badge)) badge,
@@ -371,7 +390,61 @@ class HydrationController extends ChangeNotifier {
       goalReached: goalReached,
       badges: newBadges,
       levelUp: level.number > oldLevel.number ? level : null,
+      freezeEarned: freezeEarned,
+      streakMilestone: streakMilestone,
     );
+  }
+
+  // --- Jours de repos ---
+
+  /// Jours de repos en réserve (2 au plus).
+  int get freezes => _store.freezes;
+
+  /// Jours protégés à l'instant par un jour de repos (à annoncer une fois).
+  int frozenNotice = 0;
+
+  void clearFrozenNotice() {
+    frozenNotice = 0;
+    notifyListeners();
+  }
+
+  /// Tous les 7 jours de flamme : un jour de repos de plus.
+  Future<bool> _awardFreeze() async {
+    if (_streak == 0) await _store.setFreezeAwardedAt(0);
+    if (_streak == 0 ||
+        _streak % freezeEvery != 0 ||
+        _streak <= _store.freezeAwardedAt) {
+      return false;
+    }
+    await _store.setFreezeAwardedAt(_streak);
+    if (_store.freezes >= HydrationStore.maxFreezes) return false;
+    await _store.setFreezes(_store.freezes + 1);
+    return true;
+  }
+
+  /// Jours oubliés depuis hier : un jour de repos les protège, si la flamme
+  /// brûlait avant et qu'il en reste assez.
+  Future<void> protectStreak() async {
+    final min = streakMinChecks;
+    final available = _store.freezes;
+    final first = _store.firstDay;
+    if (min == 0 || available == 0 || first == null) return;
+    final missed = <DateTime>[];
+    var day = DateTime(_day.year, _day.month, _day.day - 1);
+    while (!_store.keepsStreak(day, min)) {
+      if (day.isBefore(first) || missed.length == available) return;
+      missed.add(day);
+      day = DateTime(day.year, day.month, day.day - 1);
+    }
+    if (missed.isEmpty) return;
+    for (final m in missed) {
+      await _store.freezeDay(m);
+    }
+    await _store.setFreezes(available - missed.length);
+    _streak = _store.streak(_day, min);
+    frozenNotice = missed.length;
+    notifyListeners();
+    _push();
   }
 
   bool _earned(Achievement badge) => switch (badge) {
@@ -380,6 +453,7 @@ class HydrationController extends ChangeNotifier {
         Achievement.streak3 => _streak >= 3,
         Achievement.streak7 => _streak >= 7,
         Achievement.streak30 => _streak >= 30,
+        Achievement.streak100 => _streak >= 100,
         Achievement.earlyBird =>
           reminders.isNotEmpty && isChecked(reminders.first),
         Achievement.nightOwl =>

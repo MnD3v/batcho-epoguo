@@ -115,7 +115,8 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'Meilleure série : ${controller.bestStreak} jour'
-                '${controller.bestStreak > 1 ? 's' : ''}',
+                '${controller.bestStreak > 1 ? 's' : ''} · Jours de repos : '
+                '${controller.freezes}/2 (1 gagné tous les 7 jours)',
                 style: Duo.body.copyWith(fontSize: 14),
               ),
               const SizedBox(height: 24),

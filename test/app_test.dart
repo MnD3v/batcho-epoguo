@@ -205,8 +205,7 @@ void main() {
     await tap(tester, text('ANNÉE'));
     expect(find.text('Moyenne par jour, sur 12 mois'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Paramètres'));
-    await tester.pumpAndSettle();
+    await tap(tester, find.byTooltip('Paramètres'));
     expect(find.text('Paramètres'), findsOneWidget);
 
     await tap(tester, text('Prénom'));
