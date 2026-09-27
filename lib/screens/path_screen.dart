@@ -395,21 +395,9 @@ class _DrinkCardState extends State<_DrinkCard> {
             ),
             child: Row(
               children: [
-                // Pastille blanche : le verre ressort bien sur le bleu.
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border:
-                        Border.all(color: const Color(0xFFB8E6FC), width: 2),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Pulse(
-                    amount: 0.06,
-                    child: GameIcon('glass', size: 46),
-                  ),
+                const Pulse(
+                  amount: 0.06,
+                  child: GameIcon('glass', size: 56),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
