@@ -539,8 +539,8 @@ class _ExtraDrinkSheet extends StatelessWidget {
   }
 }
 
-/// Mode chaleur : conseil du jour s'il fait très chaud, sinon invitation à
-/// choisir sa ville.
+/// Mode chaleur : conseil du jour s'il fait très chaud (la ville se choisit
+/// dans les paramètres).
 class _HeatCard extends StatelessWidget {
   const _HeatCard({required this.controller});
 
@@ -550,17 +550,15 @@ class _HeatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final city = controller.city;
     final max = controller.todayMax;
-    if (city != null && !controller.isHotToday) return const SizedBox.shrink();
-    final text = city == null
-        ? 'Mode chaleur : choisis ta ville et je te préviens les jours de '
-            'grosse chaleur.'
-        : 'Il fera ${max!.round()} °C à ${city.name} aujourd\'hui : bois '
-            '$hotDayExtraGlasses verres de plus !';
+    if (city == null || max == null || !controller.isHotToday) {
+      return const SizedBox.shrink();
+    }
+    final text = 'Il fera ${max.round()} °C à ${city.name} aujourd\'hui : bois '
+        '$hotDayExtraGlasses verres de plus !';
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: DuoCard(
-        color: city == null ? Colors.white : const Color(0xFFFFF3E0),
-        onTap: city == null ? () => pickCity(context, controller) : null,
+        color: const Color(0xFFFFF3E0),
         child: Row(
           children: [
             SvgPicture.asset(
@@ -574,14 +572,11 @@ class _HeatCard extends StatelessWidget {
                 text,
                 style: Duo.heading.copyWith(
                   fontSize: 15,
-                  color: city == null ? Duo.text : Duo.orangeDark,
+                  color: Duo.orangeDark,
                 ),
               ),
             ),
-            if (city == null)
-              const Icon(Icons.chevron_right_rounded, color: Duo.gray)
-            else
-              SpeakButton(text: text),
+            SpeakButton(text: text),
           ],
         ),
       ),

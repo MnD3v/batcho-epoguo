@@ -98,19 +98,9 @@ class ProfileScreen extends StatelessWidget {
                     label: 'Jours de flamme',
                   ),
                   _Stat(
-                    icon: 'assets/icons/xp.svg',
-                    value: '${controller.xp}',
-                    label: 'XP au total',
-                  ),
-                  _Stat(
                     icon: 'assets/icons/drop.svg',
                     value: formatLiters(stats.totalMl),
                     label: 'Bus au total',
-                  ),
-                  _Stat(
-                    icon: 'assets/icons/star.svg',
-                    value: '${stats.perfectDays}',
-                    label: 'Journées parfaites',
                   ),
                 ],
               ),
