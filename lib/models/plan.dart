@@ -35,6 +35,31 @@ class Reminder {
   int get hashCode => Object.hash(minutes, ml);
 }
 
+/// Un verre bu en dehors des alertes (à tout moment).
+class ExtraDrink {
+  const ExtraDrink(this.minutes, this.ml);
+
+  final int minutes;
+  final int ml;
+
+  String get time => '${(minutes ~/ 60).toString().padLeft(2, '0')}:'
+      '${(minutes % 60).toString().padLeft(2, '0')}';
+
+  @override
+  bool operator ==(Object other) =>
+      other is ExtraDrink && other.minutes == minutes && other.ml == ml;
+
+  @override
+  int get hashCode => Object.hash(minutes, ml);
+}
+
+/// Ce qu'on peut noter d'un geste avec « + J'ai bu ».
+const extraDrinkChoices = [
+  (label: 'Un verre', ml: 250, asset: 'assets/drinks/glass.svg'),
+  (label: 'Un pure water', ml: 500, asset: 'assets/drinks/pure_water.svg'),
+  (label: 'Une bouteille', ml: 750, asset: 'assets/drinks/bottle.svg'),
+];
+
 class HydrationPlan {
   HydrationPlan(this.rhythm, List<Reminder> reminders)
       : reminders = List.unmodifiable(

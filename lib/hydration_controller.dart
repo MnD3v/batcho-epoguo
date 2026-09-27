@@ -56,6 +56,7 @@ class HydrationController extends ChangeNotifier {
   String? _uid;
   late DateTime _day;
   late Map<int, int> _checks;
+  late List<ExtraDrink> _extras;
   late int _streak;
 
   UserProfile? get profile => _profile;
@@ -82,7 +83,14 @@ class HydrationController extends ChangeNotifier {
       reminders.where((r) => _checks.containsKey(r.minutes)).length;
   bool get goalReached =>
       reminders.isNotEmpty && checkedCount == reminders.length;
-  int get drunkMl => _checks.values.fold(0, (sum, ml) => sum + ml);
+
+  /// Total bu aujourd'hui : alertes cochées et verres bus à tout moment.
+  int get drunkMl =>
+      _checks.values.fold(0, (sum, ml) => sum + ml) +
+      _extras.fold(0, (sum, e) => sum + e.ml);
+
+  /// Verres bus en dehors des alertes aujourd'hui.
+  List<ExtraDrink> get extras => List.unmodifiable(_extras);
   int get goalMl => _plan?.goalMl ?? 0;
 
   bool isTipRead(int index) => _stats.readTips.contains(index);
@@ -257,9 +265,10 @@ class HydrationController extends ChangeNotifier {
   /// widget pendant que l'appli était en arrière-plan).
   Future<void> reload() async {
     final before = _store.checks(_day);
+    final extrasBefore = _extras.length;
     await _store.reload();
     _loadAll();
-    if (!mapEquals(before, _checks)) {
+    if (!mapEquals(before, _checks) || extrasBefore != _extras.length) {
       notifyListeners();
       _push();
       await updateEveningRescue();
@@ -432,6 +441,39 @@ class HydrationController extends ChangeNotifier {
     return _finish(before);
   }
 
+  /// « + J'ai bu » : un verre bu à tout moment, en dehors des alertes.
+  /// Compte dans le total du jour ; +5 XP les 4 premières fois de la
+  /// journée. Ne coche pas d'alerte (la flamme récompense la régularité).
+  Future<Reward> drinkExtra(int ml) async {
+    refreshDay();
+    final before = _stats;
+    final earnsXp = _extras.length < maxExtraDrinksWithXp;
+    final n = now();
+    _extras = [..._extras, ExtraDrink(n.hour * 60 + n.minute, ml)];
+    await _store.saveExtras(_day, _extras);
+    _stats = before.copyWith(
+      totalMl: before.totalMl + ml,
+      extraDrinks: before.extraDrinks + (earnsXp ? 1 : 0),
+    );
+    return _finish(before);
+  }
+
+  /// Annule un verre noté par erreur (et ses XP).
+  Future<void> removeExtra(ExtraDrink drink) async {
+    final index = _extras.indexOf(drink);
+    if (index < 0) return;
+    final before = _stats;
+    final earnedBefore = _extras.length.clamp(0, maxExtraDrinksWithXp);
+    _extras = [..._extras]..removeAt(index);
+    final earnedAfter = _extras.length.clamp(0, maxExtraDrinksWithXp);
+    await _store.saveExtras(_day, _extras);
+    _stats = before.copyWith(
+      totalMl: before.totalMl - drink.ml,
+      extraDrinks: before.extraDrinks - (earnedBefore - earnedAfter),
+    );
+    await _finish(before);
+  }
+
   /// Leçon lue : +5 XP la première fois.
   Future<Reward> markTipRead(int index) async {
     if (isTipRead(index)) return const Reward();
@@ -545,6 +587,7 @@ class HydrationController extends ChangeNotifier {
   void _loadDay() {
     _day = _today();
     _checks = _store.checks(_day);
+    _extras = _store.extras(_day);
     _streak = _store.streak(_day, streakMinChecks);
   }
 

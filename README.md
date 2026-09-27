@@ -15,6 +15,11 @@ et **Reno**, le rein mascotte, qui guide, encourage et **parle** (bouton 🔊, v
   **fort (réveil)** au choix. Messages variés, dont « une greffe de rein coûte plus de 15 000 000 FCFA ».
   Rappel du soir quand la flamme est en danger.
 - **Rythme** : toutes les 2 h ou 3 h (7h–20h), ou à des heures précises avec la quantité de chacune.
+- **Boire à tout moment** : « + J'ai bu » (verre, pure water, bouteille) compte dans le total du jour,
+  les courbes et les défis, +5 XP (4 fois par jour). Les alertes, elles, gardent la flamme.
+- **Animations** : Reno respire, saute de joie et sursaute quand on le touche ; verre qui se remplit
+  à chaque gorgée, étape en cours qui bat, flamme qui vacille, pluie de gouttes à la victoire.
+  Les boucles s'arrêtent si le téléphone demande moins d'animations.
 - **Widget Android** : litres bus, jauge, flamme et bouton « J'ai bu ✓ ».
 - **Parcours du jour** en zigzag, **XP et niveaux**, **flamme** (70 % des alertes cochées),
   **jours de repos** qui protègent la flamme (1 gagné tous les 7 jours, 2 au plus), paliers 7/30/100 jours,

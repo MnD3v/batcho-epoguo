@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import 'hydration_controller.dart';
 import 'screens/auth_screens.dart';
@@ -8,6 +7,7 @@ import 'screens/onboarding_screen.dart';
 import 'services/auth_service.dart';
 import 'social_controller.dart';
 import 'theme/duo.dart';
+import 'widgets/motion.dart';
 
 /// Choisit l'écran selon la situation : premier lancement → accueil, pas
 /// encore d'alertes → questionnaire, sinon → l'appli. On peut commencer sans
@@ -116,7 +116,7 @@ class _Loading extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SvgPicture.asset('assets/mascot/mascot_drink.svg', height: 150),
+            const AnimatedMascot(pose: 'mascot_drink', size: 150),
             const SizedBox(height: 20),
             const SizedBox(
               width: 200,

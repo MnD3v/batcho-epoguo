@@ -5,6 +5,10 @@ const xpPerCheck = 10;
 const xpPerfectDay = 30;
 const xpPerTip = 5;
 
+/// Boire en dehors des alertes rapporte aussi, 4 fois par jour au plus.
+const xpPerExtraDrink = 5;
+const maxExtraDrinksWithXp = 4;
+
 class Level {
   const Level(this.number, this.name, this.minXp);
 

@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../services/read_aloud.dart';
 import '../theme/duo.dart';
+import 'motion.dart';
 
 /// Bouton en relief qui s'enfonce quand on appuie dessus.
 class DuoButton extends StatefulWidget {
@@ -224,12 +225,16 @@ class StatChip extends StatelessWidget {
     required this.value,
     required this.color,
     this.semanticLabel,
+    this.animateIcon = false,
   });
 
   final String icon;
   final String value;
   final Color color;
   final String? semanticLabel;
+
+  /// L'icône vacille (flamme allumée).
+  final bool animateIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -239,7 +244,10 @@ class StatChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SvgPicture.asset(icon, width: 28, height: 28),
+          if (animateIcon)
+            Flicker(child: SvgPicture.asset(icon, width: 28, height: 28))
+          else
+            SvgPicture.asset(icon, width: 28, height: 28),
           const SizedBox(width: 6),
           Text(
             value,
@@ -278,7 +286,12 @@ class MascotSays extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        SvgPicture.asset('assets/mascot/$pose.svg', width: size, height: size),
+        AnimatedMascot(
+          pose: pose,
+          size: size,
+          // Toucher Reno le fait sauter (et parler s'il peut).
+          onTap: speakable ? () => ReadAloud.instance.speak(text) : null,
+        ),
         Expanded(child: SpeechBubble(text: text)),
         if (speakable) SpeakButton(text: text),
       ],

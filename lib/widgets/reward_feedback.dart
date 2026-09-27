@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../models/game.dart';
 import '../theme/duo.dart';
 import 'duo_widgets.dart';
+import 'motion.dart';
 import 'share_card.dart';
 
 const _praises = [
@@ -40,15 +41,8 @@ Future<void> showReward(
           children: [
             Row(
               children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.check_rounded, color: Duo.green),
-                ),
+                // Le verre se remplit : c'est bu !
+                const GlassFill(level: 0.92, from: 0.1, size: 52),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -57,10 +51,29 @@ Future<void> showReward(
                   ),
                 ),
                 if (reward.xp > 0)
-                  StatChip(
-                    icon: 'assets/icons/xp.svg',
-                    value: '+${reward.xp} XP',
-                    color: Duo.blueDark,
+                  PopIn(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SvgPicture.asset(
+                          'assets/icons/xp.svg',
+                          width: 28,
+                          height: 28,
+                        ),
+                        const SizedBox(width: 6),
+                        CountUp(
+                          value: reward.xp,
+                          prefix: '+',
+                          suffix: ' XP',
+                          style: const TextStyle(
+                            fontFamily: Duo.font,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: Duo.blueDark,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
               ],
             ),
@@ -109,105 +122,101 @@ class CelebrationScreen extends StatelessWidget {
                     : reward.badges.length > 1
                         ? 'Nouveaux badges !'
                         : 'Nouveau badge !';
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              const Spacer(),
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.4, end: 1),
-                duration: const Duration(milliseconds: 700),
-                curve: Curves.elasticOut,
-                builder: (context, v, child) =>
-                    Transform.scale(scale: v, child: child),
-                child: SvgPicture.asset(
-                  'assets/mascot/mascot_cheer.svg',
-                  height: 200,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Duo.title.copyWith(color: Duo.gold, fontSize: 28),
-              ),
-              const SizedBox(height: 8),
-              if (milestone != null)
-                Text(
-                  '$milestone jours d\'affilée : tes reins te disent merci !',
-                  textAlign: TextAlign.center,
-                  style: Duo.body,
-                )
-              else if (reward.goalReached)
-                const Text(
-                  'Toutes tes alertes sont cochées. Reno est au top de sa forme !',
-                  textAlign: TextAlign.center,
-                  style: Duo.body,
-                ),
-              if (level != null && reward.goalReached)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'Et tu passes au niveau ${level.number} : ${level.name} !',
-                    textAlign: TextAlign.center,
-                    style: Duo.body.copyWith(color: Duo.blueDark),
-                  ),
-                ),
-              const SizedBox(height: 24),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                alignment: WrapAlignment.center,
+    return Stack(
+      children: [
+        Scaffold(
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
                 children: [
-                  if (reward.xp > 0)
-                    _StatBox(
-                      label: 'XP gagnés',
-                      value: '+${reward.xp}',
-                      color: Duo.gold,
-                      icon: 'assets/icons/xp.svg',
+                  const Spacer(),
+                  const AnimatedMascot(pose: 'mascot_cheer', size: 200),
+                  const SizedBox(height: 16),
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: Duo.title.copyWith(color: Duo.gold, fontSize: 28),
+                  ),
+                  const SizedBox(height: 8),
+                  if (milestone != null)
+                    Text(
+                      '$milestone jours d\'affilée : tes reins te disent merci !',
+                      textAlign: TextAlign.center,
+                      style: Duo.body,
+                    )
+                  else if (reward.goalReached)
+                    const Text(
+                      'Toutes tes alertes sont cochées. Reno est au top de sa forme !',
+                      textAlign: TextAlign.center,
+                      style: Duo.body,
                     ),
-                  if (reward.freezeEarned)
-                    const _StatBox(
-                      label: 'Jour de repos',
-                      value: '+1',
-                      color: Duo.blue,
-                      icon: 'assets/icons/freeze.svg',
+                  if (level != null && reward.goalReached)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Et tu passes au niveau ${level.number} : ${level.name} !',
+                        textAlign: TextAlign.center,
+                        style: Duo.body.copyWith(color: Duo.blueDark),
+                      ),
                     ),
-                  for (final badge in reward.badges)
-                    _StatBox(
-                      label: 'Badge',
-                      value: badge.title,
-                      color: badge.color,
-                      icon: badge.icon,
+                  const SizedBox(height: 24),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      if (reward.xp > 0)
+                        _StatBox(
+                          label: 'XP gagnés',
+                          value: '+${reward.xp}',
+                          color: Duo.gold,
+                          icon: 'assets/icons/xp.svg',
+                        ),
+                      if (reward.freezeEarned)
+                        const _StatBox(
+                          label: 'Jour de repos',
+                          value: '+1',
+                          color: Duo.blue,
+                          icon: 'assets/icons/freeze.svg',
+                        ),
+                      for (final badge in reward.badges)
+                        _StatBox(
+                          label: 'Badge',
+                          value: badge.title,
+                          color: badge.color,
+                          icon: badge.icon,
+                        ),
+                    ],
+                  ),
+                  const Spacer(),
+                  DuoButton.outline(
+                    label: 'Partager',
+                    icon: Icons.share_rounded,
+                    onPressed: () => shareProgress(
+                      context,
+                      headline: title,
+                      detail: reward.badges.isNotEmpty
+                          ? 'Badge « ${reward.badges.first.title} »'
+                          : 'Je bois mon eau et je protège mes reins.',
+                      icon: reward.badges.isNotEmpty
+                          ? reward.badges.first.icon
+                          : 'assets/icons/flame.svg',
                     ),
+                  ),
+                  const SizedBox(height: 10),
+                  DuoButton(
+                    label: 'Continuer',
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
                 ],
               ),
-              const Spacer(),
-              DuoButton.outline(
-                label: 'Partager',
-                icon: Icons.share_rounded,
-                onPressed: () => shareProgress(
-                  context,
-                  headline: title,
-                  detail: reward.badges.isNotEmpty
-                      ? 'Badge « ${reward.badges.first.title} »'
-                      : 'Je bois mon eau et je protège mes reins.',
-                  icon: reward.badges.isNotEmpty
-                      ? reward.badges.first.icon
-                      : 'assets/icons/flame.svg',
-                ),
-              ),
-              const SizedBox(height: 10),
-              DuoButton(
-                label: 'Continuer',
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
+            ),
           ),
         ),
-      ),
+        // Pluie de gouttes et d'étoiles.
+        const Positioned.fill(child: ConfettiRain()),
+      ],
     );
   }
 }

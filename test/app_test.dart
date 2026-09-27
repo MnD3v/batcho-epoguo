@@ -53,6 +53,11 @@ void main() {
   /// est proche de l'écran), le centre, puis le touche.
   Future<void> tap(WidgetTester tester, Finder finder) async {
     if (finder.evaluate().isEmpty) {
+      // Remonte en haut de la liste, puis descend jusqu'à le trouver.
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, 5000));
+      await tester.pumpAndSettle();
+    }
+    if (finder.evaluate().isEmpty) {
       await tester.scrollUntilVisible(
         finder,
         200,
@@ -224,7 +229,22 @@ void main() {
     expect(c.xp, 10);
 
     await tap(tester, find.byKey(const ValueKey('slot_11:00')));
-    expect(find.text('Cette alerte s\'ouvre à 11:00 🔒'), findsOneWidget);
+    expect(find.textContaining('Cette alerte s\'ouvre à 11:00 🔒'),
+        findsOneWidget);
+    expect(find.textContaining('« + J\'ai bu »'), findsWidgets);
+
+    // Boire à tout moment : « + J'ai bu », puis un pure water.
+    await tap(tester, text('+ J\'AI BU'));
+    await tap(tester, text('Un pure water'));
+    expect(find.text('+5 XP'), findsOneWidget);
+    await tap(tester, text('CONTINUER'));
+    expect(c.drunkMl, 750);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 5000));
+    await tester.pumpAndSettle();
+    expect(find.text('0,75 L sur 1,75 L'), findsOneWidget);
+    // Annuler ce verre (erreur de doigt).
+    await tap(tester, find.byTooltip('Annuler'));
+    expect(c.drunkMl, 250);
 
     await tap(tester, nine);
     await tap(tester, text('DÉCOCHER'));

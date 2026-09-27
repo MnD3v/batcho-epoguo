@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../models/profile.dart';
 import '../services/auth_service.dart';
 import '../theme/duo.dart';
 import '../widgets/duo_widgets.dart';
+import '../widgets/motion.dart';
 
 /// Premier écran : Reno se présente, on s'inscrit ou on se connecte.
 class WelcomeScreen extends StatelessWidget {
@@ -24,7 +24,7 @@ class WelcomeScreen extends StatelessWidget {
           child: Column(
             children: [
               const Spacer(),
-              SvgPicture.asset('assets/mascot/mascot_cheer.svg', height: 220),
+              const AnimatedMascot(pose: 'mascot_cheer', size: 220),
               const SizedBox(height: 16),
               Text(
                 'Bois & Vis',

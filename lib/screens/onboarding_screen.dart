@@ -3,12 +3,14 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../data/kidney_tips.dart';
 import '../hydration_controller.dart';
+import '../models/game.dart';
 import '../models/plan.dart';
 import '../models/profile.dart';
 import '../services/auth_service.dart';
 import '../services/reminder_scheduler.dart';
 import '../theme/duo.dart';
 import '../widgets/duo_widgets.dart';
+import '../widgets/motion.dart';
 
 enum _Step { name, intake, difficulties, rhythm, amounts, ready }
 
@@ -191,11 +193,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   List<Widget> _nameStep() => [
         const SizedBox(height: 8),
-        Center(
-          child: SvgPicture.asset(
-            'assets/mascot/mascot_cheer.svg',
-            height: 150,
-          ),
+        const Center(
+          child: AnimatedMascot(pose: 'mascot_cheer', size: 150),
         ),
         const SizedBox(height: 16),
         const SpeechBubble(
@@ -441,6 +440,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: 8),
             Text(
               '« ${alertTitle(widget.controller.profile)} »\n$kidneyPriceMessage',
+              style: Duo.body.copyWith(fontSize: 15),
+            ),
+            const SizedBox(height: 12),
+            const Text('Et entre deux alertes ?', style: Duo.heading),
+            const SizedBox(height: 4),
+            Text(
+              'Bois quand tu veux ! Touche « + J\'ai bu » sur ton parcours : '
+              'ça compte dans ton total (+$xpPerExtraDrink XP).',
               style: Duo.body.copyWith(fontSize: 15),
             ),
           ],

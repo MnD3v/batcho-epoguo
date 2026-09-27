@@ -14,6 +14,7 @@ class GameStats {
     this.readTips = const {},
     this.badges = const {},
     this.bonusXp = 0,
+    this.extraDrinks = 0,
   });
 
   final int totalChecks;
@@ -26,10 +27,14 @@ class GameStats {
   /// XP offerts (parrainage).
   final int bonusXp;
 
+  /// Verres bus hors alertes qui ont rapporté des XP.
+  final int extraDrinks;
+
   int get xp =>
       totalChecks * xpPerCheck +
       perfectDays * xpPerfectDay +
       readTips.length * xpPerTip +
+      extraDrinks * xpPerExtraDrink +
       bonusXp;
 
   GameStats copyWith({
@@ -40,6 +45,7 @@ class GameStats {
     Set<int>? readTips,
     Set<Achievement>? badges,
     int? bonusXp,
+    int? extraDrinks,
   }) =>
       GameStats(
         totalChecks: totalChecks ?? this.totalChecks,
@@ -49,6 +55,7 @@ class GameStats {
         readTips: readTips ?? this.readTips,
         badges: badges ?? this.badges,
         bonusXp: bonusXp ?? this.bonusXp,
+        extraDrinks: extraDrinks ?? this.extraDrinks,
       );
 }
 
@@ -80,6 +87,8 @@ class HydrationStore {
   static const _readTipsKey = 'stats_read_tips';
   static const _badgesKey = 'stats_badges';
   static const _bonusXpKey = 'stats_bonus_xp';
+  static const _extraDrinksKey = 'stats_extra_drinks';
+  static const _extraPrefix = 'extra_';
   static const _firstDayKey = 'first_day';
   static const _ownerKey = 'owner_uid';
 
@@ -88,6 +97,7 @@ class HydrationStore {
     'profile_',
     'plan_',
     'checks_',
+    'extra_',
     'stats_',
     'social_',
     _firstDayKey,
@@ -238,7 +248,30 @@ class HydrationStore {
   }
 
   /// Total bu un jour donné, en millilitres.
-  int drunkMl(DateTime day) => checks(day).values.fold(0, (a, b) => a + b);
+  /// Total bu un jour : alertes cochées et verres bus à tout moment.
+  int drunkMl(DateTime day) =>
+      checks(day).values.fold(0, (a, b) => a + b) +
+      extras(day).fold(0, (a, e) => a + e.ml);
+
+  /// Verres bus en dehors des alertes, dans l'ordre.
+  List<ExtraDrink> extras(DateTime day) => [
+        for (final entry in (_prefs.getStringList(_extraKey(day)) ?? const [])
+            .map((e) => e.split(':')))
+          if (entry.length == 2)
+            ExtraDrink(int.parse(entry[0]), int.parse(entry[1])),
+      ];
+
+  Future<void> saveExtras(DateTime day, List<ExtraDrink> drinks) async {
+    if (drinks.isEmpty) {
+      await _prefs.remove(_extraKey(day));
+    } else {
+      await _prefs.setStringList(_extraKey(day), [
+        for (final d in drinks) '${d.minutes}:${d.ml}',
+      ]);
+    }
+  }
+
+  static String _extraKey(DateTime day) => '$_extraPrefix${_dayKey(day)}';
 
   Future<void> saveProfile(UserProfile profile) async {
     await _prefs.setString(_firstNameKey, profile.firstName);
@@ -357,6 +390,7 @@ class HydrationStore {
             ...Achievement.values.where((b) => b.name == name),
         },
         bonusXp: _prefs.getInt(_bonusXpKey) ?? 0,
+        extraDrinks: _prefs.getInt(_extraDrinksKey) ?? 0,
       );
 
   Future<void> saveStats(GameStats stats) async {
@@ -371,13 +405,17 @@ class HydrationStore {
       for (final b in stats.badges) b.name,
     ]);
     await _prefs.setInt(_bonusXpKey, stats.bonusXp);
+    await _prefs.setInt(_extraDrinksKey, stats.extraDrinks);
   }
 
   Future<void> _pruneOldDays(DateTime today) async {
-    final limit = _checksKey(today.subtract(const Duration(days: _keepDays)));
+    final limit = _dayKey(today.subtract(const Duration(days: _keepDays)));
     for (final key in _prefs.getKeys().toList()) {
-      if (key.startsWith(_checksPrefix) && key.compareTo(limit) < 0) {
-        await _prefs.remove(key);
+      for (final prefix in [_checksPrefix, _extraPrefix]) {
+        if (key.startsWith(prefix) &&
+            key.substring(prefix.length).compareTo(limit) < 0) {
+          await _prefs.remove(key);
+        }
       }
     }
   }

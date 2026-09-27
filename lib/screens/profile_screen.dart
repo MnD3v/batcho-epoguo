@@ -6,6 +6,7 @@ import '../hydration_controller.dart';
 import '../services/auth_service.dart';
 import '../social_controller.dart';
 import '../widgets/account_prompt.dart';
+import '../widgets/motion.dart';
 import '../widgets/share_card.dart';
 import '../models/plan.dart';
 import '../theme/duo.dart';
@@ -40,11 +41,7 @@ class ProfileScreen extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  SvgPicture.asset(
-                    'assets/mascot/mascot_happy.svg',
-                    width: 90,
-                    height: 90,
-                  ),
+                  const AnimatedMascot(pose: 'mascot_happy', size: 90),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(

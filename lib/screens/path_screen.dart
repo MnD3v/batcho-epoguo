@@ -11,6 +11,7 @@ import '../theme/duo.dart';
 import '../services/auth_service.dart';
 import '../widgets/account_prompt.dart';
 import '../widgets/duo_widgets.dart';
+import '../widgets/motion.dart';
 import '../widgets/reward_feedback.dart';
 
 /// Le parcours du jour : les 7 rappels en zigzag, à cocher un par un.
@@ -68,7 +69,10 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
       case SlotState.locked:
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Cette alerte s\'ouvre à ${reminder.time} 🔒'),
+            content: Text(
+              'Cette alerte s\'ouvre à ${reminder.time} 🔒 Tu as déjà bu ? '
+              'Touche « + J\'ai bu ».',
+            ),
           ),
         );
       case SlotState.done:
@@ -81,6 +85,26 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
         // Sans compte : proposé une fois, juste après la première gorgée.
         if (mounted) await maybePromptAccount(context, widget.auth, _c);
     }
+  }
+
+  /// « + J'ai bu » : un verre à tout moment, en dehors des alertes.
+  Future<void> _drinkExtra() async {
+    final ml = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      builder: (context) => const _ExtraDrinkSheet(),
+    );
+    if (ml == null || !mounted) return;
+    final reward = await _c.drinkExtra(ml);
+    if (!mounted) return;
+    await showReward(
+      context,
+      reward,
+      message: 'Noté : ${formatLiters(ml)} en plus aujourd\'hui. Boire en '
+          'dehors des alertes, c\'est encore mieux !',
+    );
+    if (mounted) await maybePromptAccount(context, widget.auth, _c);
   }
 
   Future<bool?> _confirmUncheck(Reminder reminder) =>
@@ -143,6 +167,8 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
                       const SizedBox(height: 16),
                     ],
                     _mascot(),
+                    const SizedBox(height: 12),
+                    _ExtraDrinks(controller: _c, onDrink: _drinkExtra),
                     const SizedBox(height: 16),
                     LayoutBuilder(
                       builder: (context, constraints) =>
@@ -250,6 +276,7 @@ class _TopBar extends StatelessWidget {
                 : 'assets/icons/flame_off.svg',
             value: '${c.streak}',
             color: c.streakSafeToday ? Duo.orange : Duo.gray,
+            animateIcon: c.streakSafeToday,
             semanticLabel: 'Flamme : ${c.streak} jours',
           ),
           if (c.freezes > 0)
@@ -267,6 +294,116 @@ class _TopBar extends StatelessWidget {
             semanticLabel: '${c.xp} XP',
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// « + J'ai bu » et les verres bus en dehors des alertes aujourd'hui.
+class _ExtraDrinks extends StatelessWidget {
+  const _ExtraDrinks({required this.controller, required this.onDrink});
+
+  final HydrationController controller;
+  final VoidCallback onDrink;
+
+  @override
+  Widget build(BuildContext context) {
+    final extras = controller.extras;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DuoButton.outline(
+          label: '+ J\'ai bu',
+          icon: Icons.local_drink_rounded,
+          onPressed: onDrink,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Tu peux boire à tout moment, même entre les alertes : note-le ici.',
+          textAlign: TextAlign.center,
+          style: Duo.body.copyWith(fontSize: 13),
+        ),
+        if (extras.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [
+              for (final drink in extras)
+                PopIn(
+                  child: InputChip(
+                    avatar: const Icon(
+                      Icons.water_drop_rounded,
+                      color: Duo.blue,
+                      size: 18,
+                    ),
+                    label: Text(
+                      '${drink.time} · ${formatLiters(drink.ml)}',
+                      style: Duo.heading.copyWith(fontSize: 13),
+                    ),
+                    backgroundColor: Duo.blueLight,
+                    side: const BorderSide(color: Duo.blue, width: 1.5),
+                    deleteIcon: const Icon(Icons.close_rounded, size: 18),
+                    deleteButtonTooltipMessage: 'Annuler',
+                    onDeleted: () => controller.removeExtra(drink),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Choix de ce qu'on vient de boire.
+class _ExtraDrinkSheet extends StatelessWidget {
+  const _ExtraDrinkSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const MascotSays(
+              pose: 'mascot_drink',
+              size: 80,
+              text: 'Super réflexe ! Qu\'est-ce que tu viens de boire ?',
+            ),
+            const SizedBox(height: 16),
+            for (final choice in extraDrinkChoices)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: DuoCard(
+                  onTap: () => Navigator.of(context).pop(choice.ml),
+                  child: Row(
+                    children: [
+                      SvgPicture.asset(choice.asset, width: 40, height: 40),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          choice.label,
+                          style: Duo.heading.copyWith(fontSize: 16),
+                        ),
+                      ),
+                      Text(
+                        formatLiters(choice.ml),
+                        style: Duo.heading.copyWith(
+                          fontSize: 16,
+                          color: Duo.blueDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -417,9 +554,21 @@ class _DayBanner extends StatelessWidget {
             style: Duo.label.copyWith(color: Colors.white70),
           ),
           const SizedBox(height: 4),
-          Text(
-            '${formatLiters(c.drunkMl)} sur ${formatLiters(c.goalMl)}',
-            style: Duo.title.copyWith(color: Colors.white),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${formatLiters(c.drunkMl)} sur ${formatLiters(c.goalMl)}',
+                  style: Duo.title.copyWith(color: Colors.white),
+                ),
+              ),
+              // Le verre du jour se remplit à chaque gorgée.
+              GlassFill(
+                level: c.goalMl == 0 ? 0 : c.drunkMl / c.goalMl,
+                size: 48,
+                duration: const Duration(milliseconds: 900),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           DuoProgressBar(
@@ -473,10 +622,8 @@ class _PathNode extends StatelessWidget {
       SlotState.locked => (Duo.border, const Color(0xFFCECECE), 'Verrouillé'),
     };
     final icon = switch (state) {
-      SlotState.done => const Icon(
-          Icons.check_rounded,
-          color: Colors.white,
-          size: 42,
+      SlotState.done => const PopIn(
+          child: Icon(Icons.check_rounded, color: Colors.white, size: 42),
         ),
       SlotState.locked => SvgPicture.asset(
           'assets/icons/lock.svg',
@@ -522,18 +669,22 @@ class _PathNode extends StatelessWidget {
                   style: Duo.label.copyWith(color: Duo.green, fontSize: 14),
                 ),
               ),
-            Container(
-              width: 76,
-              height: 70,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(color: shadow, offset: const Offset(0, 7)),
-                ],
+            Pulse(
+              // Seule l'étape en cours bat, pour attirer le doigt.
+              amount: state == SlotState.current ? 0.07 : 0,
+              child: Container(
+                width: 76,
+                height: 70,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(color: shadow, offset: const Offset(0, 7)),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: icon,
               ),
-              alignment: Alignment.center,
-              child: icon,
             ),
             const SizedBox(height: 10),
             Text(
