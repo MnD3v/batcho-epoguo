@@ -87,7 +87,7 @@ void main() {
       'sans compte : questionnaire, première gorgée, puis compte qui garde '
       'la progression', (tester) async {
     final c = await start(tester, {});
-    expect(find.text('Bois & Vis'), findsOneWidget);
+    expect(find.text('Bienvenue sur Bois & Vis !'), findsOneWidget);
     expect(find.textContaining('Mode démo'), findsOneWidget);
     await tap(tester, text('COMMENCER'));
 
@@ -198,6 +198,9 @@ void main() {
 
     await type(tester, 'Mot de passe', 'secret1');
     await tap(tester, text('SE CONNECTER'));
+    // Écran d'ouverture du jour, puis le parcours.
+    expect(find.text('Bonjour, Awa !'), findsOneWidget);
+    await tap(tester, text('C\'EST PARTI'));
     expect(find.textContaining('Awa, lève-toi et bois 0,25 L'), findsOneWidget);
     expect(c.xp, 120);
     expect(scheduler.scheduled?.reminders.length, 7);

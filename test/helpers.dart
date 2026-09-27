@@ -60,6 +60,7 @@ class FakeScheduler implements ReminderScheduler {
 
 /// Awa, déjà inscrite, alertes toutes les 2 h de 0,25 L.
 const setUpPrefs = <String, Object>{
+  'opening_day': '2026-09-27',
   'profile_first_name': 'Awa',
   'profile_email': 'awa@exemple.com',
   'profile_intake': 'about1_5L',

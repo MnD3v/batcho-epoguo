@@ -96,6 +96,10 @@ class HydrationController extends ChangeNotifier {
 
   bool isTipRead(int index) => _stats.readTips.contains(index);
 
+  /// Écran d'ouverture : une fois par jour, au lancement.
+  bool get shouldShowOpening => isSetUp && !_store.openingShownOn(_today());
+  Future<void> markOpeningShown() => _store.markOpeningShown(_today());
+
   /// Humeur de Reno maintenant, selon l'heure et l'eau bue.
   Mood get mood => moodFor(
         reminders: reminders,

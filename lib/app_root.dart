@@ -4,6 +4,7 @@ import 'hydration_controller.dart';
 import 'screens/auth_screens.dart';
 import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/opening_screen.dart';
 import 'services/auth_service.dart';
 import 'social_controller.dart';
 import 'theme/duo.dart';
@@ -35,6 +36,9 @@ class _AppRootState extends State<AppRoot> {
 
   /// « Commencer » touché sans compte (questionnaire en cours).
   bool _guest = false;
+
+  /// Écran d'ouverture du jour ; décidé à la première arrivée sur l'appli.
+  bool? _showOpening;
 
   @override
   void initState() {
@@ -88,11 +92,25 @@ class _AppRootState extends State<AppRoot> {
         if (_loading) return const _Loading();
         final who = user?.uid ?? 'invite';
         if (!c.isSetUp) {
+          // Qui vient de remplir le questionnaire n'a pas besoin de l'écran
+          // d'ouverture en plus.
+          _showOpening = false;
           return OnboardingScreen(
             key: ValueKey('onboarding_$who'),
             controller: c,
             isFirstRun: true,
             user: user,
+          );
+        }
+        _showOpening ??= c.shouldShowOpening;
+        if (_showOpening!) {
+          return OpeningScreen(
+            key: const ValueKey('opening'),
+            controller: c,
+            onDone: () {
+              c.markOpeningShown();
+              setState(() => _showOpening = false);
+            },
           );
         }
         return MainShell(

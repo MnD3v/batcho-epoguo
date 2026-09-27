@@ -4,7 +4,7 @@ import '../models/profile.dart';
 import '../services/auth_service.dart';
 import '../theme/duo.dart';
 import '../widgets/duo_widgets.dart';
-import '../widgets/motion.dart';
+import '../widgets/hero_page.dart';
 
 /// Premier écran : Reno se présente, on s'inscrit ou on se connecte.
 class WelcomeScreen extends StatelessWidget {
@@ -17,43 +17,29 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
-          child: Column(
-            children: [
-              const Spacer(),
-              const AnimatedMascot(pose: 'mascot_cheer', size: 220),
-              const SizedBox(height: 16),
-              Text(
-                'Bois & Vis',
-                style: Duo.title.copyWith(fontSize: 36, color: Duo.green),
+    return HeroPage(
+      title: 'Bienvenue sur Bois & Vis !',
+      badge: '💧 BOIS TON EAU · PROTÈGE TES REINS',
+      text: 'Reno et sa bande te rappellent de boire, te font gagner des XP '
+          'et t\'apprennent à prendre soin de tes reins.',
+      button: 'Commencer',
+      onPressed: onStart,
+      secondary: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => SignInScreen(auth: auth),
               ),
-              const SizedBox(height: 10),
-              const Text(
-                'Bois de l\'eau, protège tes reins\net gagne des XP !',
-                textAlign: TextAlign.center,
-                style: Duo.body,
-              ),
-              const Spacer(),
-              if (auth.isDemo) ...[
-                const _DemoNotice(),
-                const SizedBox(height: 16),
-              ],
-              DuoButton(label: 'Commencer', onPressed: onStart),
-              const SizedBox(height: 12),
-              DuoButton.outline(
-                label: 'J\'ai déjà un compte',
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => SignInScreen(auth: auth),
-                  ),
-                ),
-              ),
-            ],
+            ),
+            child: Text(
+              'J\'AI DÉJÀ UN COMPTE',
+              style: Duo.label.copyWith(color: Colors.white, fontSize: 15),
+            ),
           ),
-        ),
+          if (auth.isDemo) const _DemoNotice(),
+        ],
       ),
     );
   }
@@ -68,7 +54,7 @@ class _DemoNotice extends StatelessWidget {
       'Mode démo : Firebase n\'est pas encore branché, ton compte reste sur '
       'ce téléphone.',
       textAlign: TextAlign.center,
-      style: Duo.body.copyWith(fontSize: 12, color: Duo.gray),
+      style: Duo.body.copyWith(fontSize: 12, color: Colors.white70),
     );
   }
 }

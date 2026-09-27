@@ -90,6 +90,9 @@ class HydrationStore {
   static const _extraDrinksKey = 'stats_extra_drinks';
   static const _extraPrefix = 'extra_';
   static const _firstDayKey = 'first_day';
+
+  /// Jour où l'écran d'ouverture a été montré (une fois par jour).
+  static const _openingKey = 'opening_day';
   static const _ownerKey = 'owner_uid';
 
   /// Clés qui appartiennent à la personne connectée (sauvegardées en ligne).
@@ -241,6 +244,12 @@ class HydrationStore {
     final text = _prefs.getString(_firstDayKey);
     return text == null ? null : DateTime.tryParse(text);
   }
+
+  bool openingShownOn(DateTime day) =>
+      _prefs.getString(_openingKey) == _dayKey(day);
+
+  Future<void> markOpeningShown(DateTime day) =>
+      _prefs.setString(_openingKey, _dayKey(day));
 
   Future<void> markFirstDay(DateTime day) async {
     if (firstDay != null) return;
