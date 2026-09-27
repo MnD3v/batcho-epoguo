@@ -45,7 +45,7 @@ class BadgesScreen extends StatelessWidget {
                             value: next == null
                                 ? 1
                                 : (xp - level.minXp) /
-                                      (next.minXp - level.minXp),
+                                    (next.minXp - level.minXp),
                             color: Duo.gold,
                             height: 14,
                           ),
@@ -54,7 +54,7 @@ class BadgesScreen extends StatelessWidget {
                             next == null
                                 ? '$xp XP · niveau maximum !'
                                 : '$xp / ${next.minXp} XP · prochain : '
-                                      '${next.name}',
+                                    '${next.name}',
                             style: Duo.body.copyWith(fontSize: 14),
                           ),
                         ],

@@ -102,6 +102,9 @@ class HydrationStore {
     );
   }
 
+  /// Relit les valeurs écrites par un autre isolate (notification, widget).
+  Future<void> reload() => _prefs.reload();
+
   /// Compte à qui appartiennent les données du téléphone.
   String? get ownerUid => _prefs.getString(_ownerKey);
 

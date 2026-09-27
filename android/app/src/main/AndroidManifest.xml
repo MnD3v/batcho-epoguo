@@ -1,10 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Rappels d'hydratation : notifications et reprogrammation après redémarrage -->
+    <!-- Alertes (awesome_notifications) : notifications et reprogrammation après redémarrage -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <!-- Alertes à l'heure exacte (demandée à la personne sur Android 14+) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
+    <!-- Allume l'écran quand une alerte arrive -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
     <application
         android:label="Bois &amp; Vis"
@@ -32,13 +34,21 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+        <!-- Widget de l'écran d'accueil : jauge du jour et bouton « J'ai bu ✓ » -->
+        <receiver android:name=".HydrationWidgetProvider"
+            android:label="Bois &amp; Vis"
+            android:exported="true">
             <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
-                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/hydration_widget_info" />
+        </receiver>
+        <!-- Bouton du widget : coche en arrière-plan (code Dart) -->
+        <receiver android:name="es.antonborri.home_widget.HomeWidgetBackgroundReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="es.antonborri.home_widget.action.BACKGROUND" />
             </intent-filter>
         </receiver>
         <!-- Don't delete the meta-data below.

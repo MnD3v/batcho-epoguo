@@ -48,8 +48,11 @@ class _PathScreenState extends State<PathScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) _refresh();
   }
 
-  void _refresh() {
+  /// Nouveau jour, nouvelle heure, et ce qui a été coché depuis la
+  /// notification ou le widget.
+  Future<void> _refresh() async {
     _c.refreshDay();
+    await _c.reload();
     if (mounted) setState(() {});
   }
 

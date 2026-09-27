@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Ton eau du jour et le bouton « J\'ai bu »</string>
+    <string name="widget_title">Bois &amp; Vis</string>
+    <string name="widget_drank">J\'AI BU ✓</string>
+    <string name="widget_flame">" 🔥"</string>
+</resources>

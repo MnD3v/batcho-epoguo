@@ -101,10 +101,10 @@ class CelebrationScreen extends StatelessWidget {
     final title = reward.goalReached
         ? 'Objectif du jour atteint !'
         : level != null
-        ? 'Niveau ${level.number} : ${level.name} !'
-        : reward.badges.length > 1
-        ? 'Nouveaux badges !'
-        : 'Nouveau badge !';
+            ? 'Niveau ${level.number} : ${level.name} !'
+            : reward.badges.length > 1
+                ? 'Nouveaux badges !'
+                : 'Nouveau badge !';
     return Scaffold(
       body: SafeArea(
         child: Padding(

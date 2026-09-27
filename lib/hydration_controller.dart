@@ -219,6 +219,42 @@ class HydrationController extends ChangeNotifier {
     }
   }
 
+  /// Alerte à cocher depuis la notification ou le widget : celle de
+  /// [minutes] si elle est donnée, sinon l'alerte en cours, sinon la
+  /// dernière oubliée.
+  Reminder? get quickCheckTarget {
+    final current = currentIndex;
+    if (current != null && !isChecked(reminders[current])) {
+      return reminders[current];
+    }
+    for (var i = reminders.length - 1; i >= 0; i--) {
+      if (slotState(i) == SlotState.missed) return reminders[i];
+    }
+    return null;
+  }
+
+  /// Coche sans ouvrir l'appli ; ne décoche jamais.
+  Future<Reward?> quickCheck({int? minutes}) async {
+    refreshDay();
+    final target = minutes == null
+        ? quickCheckTarget
+        : reminders.where((r) => r.minutes == minutes).firstOrNull;
+    if (target == null || isChecked(target)) return null;
+    return toggle(target);
+  }
+
+  /// Relit les données du téléphone (modifiées par la notification ou le
+  /// widget pendant que l'appli était en arrière-plan).
+  Future<void> reload() async {
+    final before = _store.checks(_day);
+    await _store.reload();
+    _loadAll();
+    if (!mapEquals(before, _checks)) {
+      notifyListeners();
+      _push();
+    }
+  }
+
   /// Enregistre le questionnaire du premier lancement.
   Future<void> saveProfile(UserProfile profile) async {
     _profile = profile;

@@ -1,9 +1,7 @@
+import 'dart:ui' show Color;
+
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/painting.dart' show Color;
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:timezone/data/latest_all.dart' as tzdata;
-import 'package:timezone/timezone.dart' as tz;
 
 import '../data/kidney_tips.dart';
 import '../models/plan.dart';
@@ -27,139 +25,188 @@ abstract class ReminderScheduler {
   Future<void> cancelAll();
 }
 
-class LocalNotificationScheduler implements ReminderScheduler {
-  final _plugin = FlutterLocalNotificationsPlugin();
+/// Boutons des alertes.
+const drankAction = 'drank';
+const snoozeAction = 'snooze';
+const snoozeDelay = Duration(minutes: 15);
 
-  // Nouveau canal : sur Android, l'importance d'un canal existant ne peut
-  // plus être changée.
-  static const _channelId = 'alertes_eau';
-  static const _channelName = 'Alertes pour boire';
+/// Alertes riches (awesome_notifications) : grande image de Reno ou du
+/// conseil du jour, boutons « J'ai bu ✓ » et « Plus tard » qui marchent
+/// sans ouvrir l'appli.
+class AwesomeReminderScheduler implements ReminderScheduler {
+  AwesomeReminderScheduler({required this.onAction});
 
-  AndroidFlutterLocalNotificationsPlugin? get _android =>
-      _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+  /// Point d'entrée des boutons (fonction statique, appelée même quand
+  /// l'appli est fermée).
+  final ActionHandler onAction;
+
+  final _notifications = AwesomeNotifications();
+
+  static const channelKey = 'alertes_eau';
+  static const _blue = Color(0xFF1CB0F6);
+  static const _green = Color(0xFF58CC02);
 
   @override
   Future<void> init() async {
-    tzdata.initializeTimeZones();
-    try {
-      final zone = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(zone.identifier));
-    } catch (e) {
-      debugPrint('Fuseau horaire inconnu, UTC utilisé : $e');
-      tz.setLocalLocation(tz.UTC);
-    }
-    await _plugin.initialize(
-      settings: const InitializationSettings(
-        android: AndroidInitializationSettings('ic_notification'),
-        iOS: DarwinInitializationSettings(
-          requestAlertPermission: false,
-          requestBadgePermission: false,
-          requestSoundPermission: false,
+    await _notifications.initialize(
+      'resource://drawable/ic_notification',
+      [
+        NotificationChannel(
+          channelKey: channelKey,
+          channelName: 'Alertes pour boire',
+          channelDescription: 'Sonne aux heures où tu dois boire',
+          importance: NotificationImportance.High,
+          defaultColor: _blue,
+          ledColor: _blue,
+          playSound: true,
+          enableVibration: true,
+          vibrationPattern: Int64List.fromList([0, 500, 250, 500]),
+          defaultRingtoneType: DefaultRingtoneType.Notification,
         ),
-      ),
+      ],
+      languageCode: 'fr',
     );
+    await _notifications.setListeners(onActionReceivedMethod: onAction);
   }
 
   @override
   Future<bool> requestPermission() async {
-    final android = _android;
-    if (android != null) {
-      final granted = await android.requestNotificationsPermission() ?? false;
-      if (await android.canScheduleExactNotifications() == false) {
-        await android.requestExactAlarmsPermission();
-      }
-      return granted;
+    if (!await _notifications.isNotificationAllowed()) {
+      await _notifications.requestPermissionToSendNotifications(
+        channelKey: channelKey,
+      );
     }
-    final ios = _plugin.resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>();
-    if (ios != null) {
-      return await ios.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          ) ??
-          false;
+    // Heure exacte (Android 12+) : demandée une fois, sinon à quelques
+    // minutes près.
+    final precise = await _notifications.checkPermissionList(
+      channelKey: channelKey,
+      permissions: const [NotificationPermission.PreciseAlarms],
+    );
+    if (precise.isEmpty) {
+      await _notifications.requestPermissionToSendNotifications(
+        channelKey: channelKey,
+        permissions: const [NotificationPermission.PreciseAlarms],
+      );
     }
-    return false;
+    return _notifications.isNotificationAllowed();
   }
 
   /// Une alerte par jour de la semaine et par heure (8 × 7 = 56 au plus,
-  /// sous la limite de 64 alertes programmées d'iOS), pour varier les conseils.
+  /// sous la limite de 64 alertes programmées d'iOS), pour varier les
+  /// conseils et les images.
   @override
   Future<void> scheduleAll(HydrationPlan plan, UserProfile? profile) async {
-    await _plugin.cancelAll();
-    // Heure exacte si Android l'autorise, sinon à quelques minutes près.
-    final exact = await _android?.canScheduleExactNotifications() ?? true;
+    await _notifications.cancelAllSchedules();
+    final timeZone = await _notifications.getLocalTimeZoneIdentifier();
     for (var weekday = DateTime.monday; weekday <= DateTime.sunday; weekday++) {
       for (var i = 0; i < plan.reminders.length; i++) {
         final reminder = plan.reminders[i];
-        final tip = kidneyTips[tipIndexFor(weekday, i)];
-        await _plugin.zonedSchedule(
-          id: weekday * 10000 + reminder.minutes,
-          title: alertTitle(profile),
-          body: alertBody(reminder),
-          scheduledDate: _nextInstance(weekday, reminder.minutes),
-          notificationDetails: _details(reminder, tip),
-          androidScheduleMode: exact
-              ? AndroidScheduleMode.exactAllowWhileIdle
-              : AndroidScheduleMode.inexactAllowWhileIdle,
-          matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        await _notifications.createNotification(
+          content: alertContent(
+            id: weekday * 10000 + reminder.minutes,
+            reminder: reminder,
+            profile: profile,
+            tip: kidneyTips[tipIndexFor(weekday, i)],
+          ),
+          actionButtons: alertButtons,
+          schedule: NotificationCalendar(
+            weekday: weekday,
+            hour: reminder.hour,
+            minute: reminder.minute,
+            second: 0,
+            millisecond: 0,
+            repeats: true,
+            allowWhileIdle: true,
+            preciseAlarm: true,
+            timeZone: timeZone,
+          ),
         );
       }
     }
   }
 
   @override
-  Future<void> cancelAll() => _plugin.cancelAll();
+  Future<void> showTest(Reminder reminder, UserProfile? profile) =>
+      _notifications.createNotification(
+        content: alertContent(
+          id: 1,
+          reminder: reminder,
+          profile: profile,
+          tip: kidneyTips[tipIndexFor(DateTime.now().weekday, 0)],
+        ),
+        actionButtons: alertButtons,
+      );
 
   @override
-  Future<void> showTest(Reminder reminder, UserProfile? profile) async {
-    final tip = kidneyTips[tipIndexFor(DateTime.now().weekday, 0)];
-    await _plugin.show(
-      id: 0,
-      title: alertTitle(profile),
-      body: alertBody(reminder),
-      notificationDetails: _details(reminder, tip),
+  Future<void> cancelAll() => _notifications.cancelAll();
+
+  /// Refait sonner la même alerte dans [snoozeDelay].
+  static Future<void> snooze(ReceivedAction action) async {
+    final minutes = action.payload?['minutes'];
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: 900000 + (int.tryParse(minutes ?? '') ?? 0),
+        channelKey: channelKey,
+        title: action.title,
+        body: action.body,
+        bigPicture: action.bigPicture,
+        largeIcon: action.largeIcon,
+        notificationLayout: NotificationLayout.BigPicture,
+        category: NotificationCategory.Reminder,
+        color: _blue,
+        wakeUpScreen: true,
+        payload: action.payload,
+      ),
+      actionButtons: alertButtons,
+      schedule: NotificationInterval(
+        interval: snoozeDelay,
+        allowWhileIdle: true,
+        preciseAlarm: true,
+      ),
     );
   }
 
-  NotificationDetails _details(Reminder reminder, KidneyTip tip) =>
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: 'Sonne aux heures où tu dois boire',
-          importance: Importance.max,
-          priority: Priority.max,
-          category: AndroidNotificationCategory.alarm,
-          // Sonne comme un réveil, même en mode discret des notifications.
-          audioAttributesUsage: AudioAttributesUsage.alarm,
-          enableVibration: true,
-          vibrationPattern: Int64List.fromList([0, 600, 300, 600, 300, 600]),
-          color: const Color(0xFF1CB0F6),
-          styleInformation: BigTextStyleInformation(
-            '${alertBody(reminder)}\n${tip.short}',
-          ),
+  static List<NotificationActionButton> get alertButtons => [
+        NotificationActionButton(
+          key: drankAction,
+          label: 'J\'ai bu ✓',
+          color: _green,
+          actionType: ActionType.SilentBackgroundAction,
         ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBanner: true,
-          presentSound: true,
-          interruptionLevel: InterruptionLevel.active,
+        NotificationActionButton(
+          key: snoozeAction,
+          label: 'Plus tard (15 min)',
+          actionType: ActionType.SilentBackgroundAction,
         ),
-      );
+      ];
 
-  tz.TZDateTime _nextInstance(int weekday, int minutes) {
-    final now = tz.TZDateTime.now(tz.local);
-    tz.TZDateTime at(int year, int month, int day) =>
-        tz.TZDateTime(tz.local, year, month, day, minutes ~/ 60, minutes % 60);
-    var date = at(now.year, now.month, now.day);
-    while (date.weekday != weekday || !date.isAfter(now)) {
-      date = at(date.year, date.month, date.day + 1);
-    }
-    return date;
-  }
+  static NotificationContent alertContent({
+    required int id,
+    required Reminder reminder,
+    required UserProfile? profile,
+    required KidneyTip tip,
+  }) =>
+      NotificationContent(
+        id: id,
+        channelKey: channelKey,
+        title: alertTitle(profile),
+        body: '${alertBody(reminder)}\n${tip.short}',
+        summary: 'Alerte de ${reminder.time}',
+        bigPicture: notificationImage(tip.asset),
+        largeIcon: 'asset://assets/notif/reno_face.png',
+        notificationLayout: NotificationLayout.BigPicture,
+        category: NotificationCategory.Reminder,
+        color: _blue,
+        wakeUpScreen: true,
+        payload: {'minutes': '${reminder.minutes}'},
+      );
+}
+
+/// « assets/illustrations/kidney_stones.svg » → sa version PNG pour la
+/// notification.
+String notificationImage(String svgAsset) {
+  final name = svgAsset.split('/').last.replaceAll('.svg', '');
+  return 'asset://assets/notif/$name.png';
 }
 
 /// « Awa, lève-toi et bois ton eau ! 💧 »

@@ -413,3 +413,48 @@ if __name__ == '__main__':
     for name, content in ICONS.items():
         open(f'{ROOT}/icons/{name}.svg', 'w').write(content)
     print('ok', len(ILLUSTRATIONS), len(DRINKS))
+
+
+# ---------------------------------------------------------------------------
+# Images des notifications (PNG : Android et iOS n'affichent pas le SVG).
+
+def _inner(svg_text):
+    return svg_text[svg_text.index('>') + 1:svg_text.rindex('</svg>')]
+
+
+def banner(svg_text, w0, h0, bg='#DDF4FF'):
+    """Illustration centrée sur un bandeau 1024×512 (grande image)."""
+    scale = min(900 / w0, 460 / h0)
+    x = (1024 - w0 * scale) / 2
+    y = (512 - h0 * scale) / 2
+    return svg(1024, 512, f'<rect width="1024" height="512" fill="{bg}"/>'
+               + drop(90, 90, 2.2, '#FFFFFF') + drop(940, 420, 1.6, '#FFFFFF')
+               + f'<g transform="translate({x:.1f} {y:.1f}) scale({scale:.3f})">'
+               + _inner(svg_text) + '</g>')
+
+
+def write_notification_images():
+    try:
+        import cairosvg
+    except ImportError:
+        print('cairosvg absent : images des notifications non générées')
+        return
+    out = f'{ROOT}/notif'
+    os.makedirs(out, exist_ok=True)
+    for name, content in ILLUSTRATIONS.items():
+        cairosvg.svg2png(bytestring=banner(content, 240, 200).encode(),
+                         write_to=f'{out}/{name}.png', output_width=1024)
+    for name in ('mascot_drink', 'mascot_cheer', 'mascot_sad'):
+        cairosvg.svg2png(bytestring=banner(MASCOTS[name], 200, 200).encode(),
+                         write_to=f'{out}/{name}.png', output_width=1024)
+    # Petite icône ronde à droite de la notification.
+    face = svg(256, 256, '<circle cx="128" cy="128" r="128" fill="#1CB0F6"/>'
+               '<g transform="translate(128 140) scale(1.05) translate(-118 -100)">'
+               + _inner(KIDNEY_ICON) + '</g>')
+    cairosvg.svg2png(bytestring=face.encode(), write_to=f'{out}/reno_face.png',
+                     output_width=256)
+    print('images des notifications :', len(os.listdir(out)))
+
+
+if __name__ == '__main__':
+    write_notification_images()
