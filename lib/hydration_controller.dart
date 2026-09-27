@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import 'data/hydration_store.dart';
+import 'data/alert_messages.dart';
 import 'data/kidney_tips.dart';
 import 'models/game.dart';
 import 'models/plan.dart';
@@ -114,7 +115,7 @@ class HydrationController extends ChangeNotifier {
       await _store.setOwner(user.uid);
       _loadAll();
       final plan = _plan;
-      if (plan != null) await scheduler.scheduleAll(plan, _profile);
+      if (plan != null) await rescheduleAlerts();
       if (data is! Map) _push();
     }
     // Le prénom du compte fait foi (il peut changer dans les paramètres).
@@ -141,7 +142,7 @@ class HydrationController extends ChangeNotifier {
     if (profile == null) return;
     await saveProfile(profile.copyWith(firstName: firstName));
     final plan = _plan;
-    if (plan != null) await scheduler.scheduleAll(plan, _profile);
+    if (plan != null) await rescheduleAlerts();
   }
 
   /// Supprime la sauvegarde en ligne (avant de supprimer le compte).
@@ -252,6 +253,7 @@ class HydrationController extends ChangeNotifier {
     if (!mapEquals(before, _checks)) {
       notifyListeners();
       _push();
+      await updateEveningRescue();
     }
   }
 
@@ -272,7 +274,49 @@ class HydrationController extends ChangeNotifier {
     await _store.savePlan(plan);
     _push();
     await scheduler.requestPermission();
-    await scheduler.scheduleAll(plan, _profile);
+    await rescheduleAlerts();
+  }
+
+  /// Sonnerie de réveil au lieu du son de notification.
+  bool get loudAlerts => _store.loudAlerts;
+
+  Future<void> setLoudAlerts(bool loud) async {
+    await _store.setLoudAlerts(loud);
+    notifyListeners();
+    _push();
+    await rescheduleAlerts();
+  }
+
+  /// Reprogramme toutes les alertes (et celle du soir).
+  Future<void> rescheduleAlerts() async {
+    final plan = _plan;
+    if (plan == null) return;
+    await scheduler.scheduleAll(plan, _profile, loud: loudAlerts);
+    await updateEveningRescue();
+  }
+
+  /// Heure de l'alerte du soir : une heure après la dernière alerte, au
+  /// plus tard à 21h30 ; null si la flamme est déjà assurée ou si c'est passé.
+  DateTime? get eveningRescueTime {
+    if (reminders.isEmpty || streakSafeToday) return null;
+    final minutes = (reminders.last.minutes + 60).clamp(0, 21 * 60 + 30);
+    final at = _day.add(Duration(minutes: minutes));
+    return at.isAfter(now()) ? at : null;
+  }
+
+  /// « Ta flamme est en danger » le soir, seulement quand c'est utile.
+  Future<void> updateEveningRescue() async {
+    final at = eveningRescueTime;
+    await scheduler.scheduleEveningRescue(
+      at,
+      at == null
+          ? null
+          : eveningRescueMessage(
+              firstName: _profile?.firstName,
+              streak: _streak,
+              remaining: streakMinChecks - checkedCount,
+            ),
+    );
   }
 
   /// Coche ou décoche une alerte ; renvoie ce que ça rapporte.
@@ -298,6 +342,7 @@ class HydrationController extends ChangeNotifier {
       perfectDays: perfectDays,
       bestStreak: _streak > before.bestStreak ? _streak : before.bestStreak,
     );
+    await updateEveningRescue();
     return _finish(before, goalReached: goalReached && !wasPerfect);
   }
 

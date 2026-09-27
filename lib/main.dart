@@ -53,10 +53,7 @@ Future<void> main() async {
     debugPrint('Widget indisponible : $e');
   }
   // Reprogramme à chaque lancement : utile si le fuseau horaire a changé.
-  final plan = controller.plan;
-  if (auth.user.value != null && plan != null) {
-    scheduler.scheduleAll(plan, controller.profile);
-  }
+  if (auth.user.value != null) controller.rescheduleAlerts();
   runApp(BoisEtVisApp(auth: auth, controller: controller));
 }
 

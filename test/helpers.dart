@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:bois_et_vis/data/alert_messages.dart';
 import 'package:bois_et_vis/models/plan.dart';
 import 'package:bois_et_vis/models/profile.dart';
 import 'package:bois_et_vis/services/reminder_scheduler.dart';
@@ -19,14 +20,36 @@ class FakeScheduler implements ReminderScheduler {
     return true;
   }
 
+  bool? scheduledLoud;
+  DateTime? eveningAt;
+  String? eveningTitle;
+
   @override
-  Future<void> scheduleAll(HydrationPlan plan, UserProfile? profile) async {
+  Future<void> scheduleAll(
+    HydrationPlan plan,
+    UserProfile? profile, {
+    bool loud = false,
+  }) async {
     scheduled = plan;
     scheduledFor = profile;
+    scheduledLoud = loud;
   }
 
   @override
-  Future<void> showTest(Reminder reminder, UserProfile? profile) async {}
+  Future<void> showTest(
+    Reminder reminder,
+    UserProfile? profile, {
+    bool loud = false,
+  }) async {}
+
+  @override
+  Future<void> scheduleEveningRescue(
+    DateTime? at,
+    AlertMessage? message,
+  ) async {
+    eveningAt = at;
+    eveningTitle = message?.title;
+  }
 
   @override
   Future<void> cancelAll() async {

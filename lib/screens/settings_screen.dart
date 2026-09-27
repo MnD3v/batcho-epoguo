@@ -150,6 +150,8 @@ class SettingsScreen extends StatelessWidget {
                           ),
                         ),
                       const SizedBox(height: 12),
+                      _SoundChoice(controller: controller),
+                      const SizedBox(height: 12),
                       DuoButton(
                         label: 'Modifier mes alertes',
                         color: Duo.blue,
@@ -175,6 +177,7 @@ class SettingsScreen extends StatelessWidget {
                                 await controller.scheduler.showTest(
                                   plan.reminders.first,
                                   profile,
+                                  loud: controller.loudAlerts,
                                 );
                                 messenger.showSnackBar(
                                   const SnackBar(
@@ -222,6 +225,55 @@ class SettingsScreen extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+}
+
+/// Son doux (par défaut) ou sonnerie de réveil.
+class _SoundChoice extends StatelessWidget {
+  const _SoundChoice({required this.controller});
+
+  final HydrationController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget option(bool loud, IconData icon, String title, String detail) {
+      final selected = controller.loudAlerts == loud;
+      return Expanded(
+        child: DuoCard(
+          selected: selected,
+          padding: const EdgeInsets.all(12),
+          onTap: () => controller.setLoudAlerts(loud),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: selected ? Duo.blue : Duo.gray),
+              const SizedBox(height: 6),
+              Text(
+                title,
+                style: Duo.heading.copyWith(
+                  fontSize: 15,
+                  color: selected ? Duo.blueDark : Duo.text,
+                ),
+              ),
+              Text(detail, style: Duo.body.copyWith(fontSize: 12)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        option(
+          false,
+          Icons.notifications_rounded,
+          'Doux',
+          'Son de notification',
+        ),
+        const SizedBox(width: 10),
+        option(true, Icons.alarm_rounded, 'Fort', 'Sonne comme un réveil'),
+      ],
     );
   }
 }

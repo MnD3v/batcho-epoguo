@@ -102,6 +102,14 @@ class HydrationStore {
     );
   }
 
+  /// Alertes façon réveil (sinon son de notification). Sauvegardé avec les
+  /// alertes.
+  static const _loudKey = 'plan_loud';
+
+  bool get loudAlerts => _prefs.getBool(_loudKey) ?? false;
+
+  Future<void> setLoudAlerts(bool loud) => _prefs.setBool(_loudKey, loud);
+
   /// Relit les valeurs écrites par un autre isolate (notification, widget).
   Future<void> reload() => _prefs.reload();
 

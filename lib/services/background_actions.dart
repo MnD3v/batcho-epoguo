@@ -19,7 +19,7 @@ Future<void> quickCheckInBackground({int? minutes}) async {
   await prefs.reload();
   final controller = HydrationController(
     store: HydrationStore(prefs),
-    scheduler: _NoScheduler(),
+    scheduler: _BackgroundScheduler(),
   );
   await controller.quickCheck(minutes: minutes);
   await HomeWidgetSync.push(controller);
@@ -46,8 +46,8 @@ Future<void> onWidgetAction(Uri? uri) async {
   }
 }
 
-/// Cocher n'a pas besoin de reprogrammer les alertes.
-class _NoScheduler implements ReminderScheduler {
+/// Cocher en arrière-plan ne reprogramme que l'alerte du soir.
+class _BackgroundScheduler implements ReminderScheduler {
   @override
   Future<void> init() async {}
 
@@ -55,10 +55,14 @@ class _NoScheduler implements ReminderScheduler {
   Future<bool> requestPermission() async => false;
 
   @override
-  Future<void> scheduleAll(plan, profile) async {}
+  Future<void> scheduleAll(plan, profile, {bool loud = false}) async {}
 
   @override
-  Future<void> showTest(reminder, profile) async {}
+  Future<void> showTest(reminder, profile, {bool loud = false}) async {}
+
+  @override
+  Future<void> scheduleEveningRescue(at, message) =>
+      AwesomeReminderScheduler.eveningRescue(at, message);
 
   @override
   Future<void> cancelAll() async {}

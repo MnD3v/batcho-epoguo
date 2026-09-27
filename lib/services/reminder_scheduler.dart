@@ -3,6 +3,7 @@ import 'dart:ui' show Color;
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/foundation.dart';
 
+import '../data/alert_messages.dart';
 import '../data/kidney_tips.dart';
 import '../models/plan.dart';
 import '../models/profile.dart';
@@ -15,11 +16,24 @@ abstract class ReminderScheduler {
   /// de sonner à l'heure exacte).
   Future<bool> requestPermission();
 
-  /// Remplace toutes les alertes par celles de [plan].
-  Future<void> scheduleAll(HydrationPlan plan, UserProfile? profile);
+  /// Remplace toutes les alertes par celles de [plan]. [loud] : sonnerie de
+  /// réveil au lieu du son de notification.
+  Future<void> scheduleAll(
+    HydrationPlan plan,
+    UserProfile? profile, {
+    bool loud = false,
+  });
 
   /// Fait sonner tout de suite une alerte d'essai.
-  Future<void> showTest(Reminder reminder, UserProfile? profile);
+  Future<void> showTest(
+    Reminder reminder,
+    UserProfile? profile, {
+    bool loud = false,
+  });
+
+  /// Alerte unique du soir quand la flamme est en danger (remplace la
+  /// précédente) ; [at] null l'annule.
+  Future<void> scheduleEveningRescue(DateTime? at, AlertMessage? message);
 
   /// Arrête toutes les alertes (déconnexion).
   Future<void> cancelAll();
@@ -42,7 +56,10 @@ class AwesomeReminderScheduler implements ReminderScheduler {
 
   final _notifications = AwesomeNotifications();
 
+  /// Son de notification (par défaut) ou sonnerie de réveil.
   static const channelKey = 'alertes_eau';
+  static const loudChannelKey = 'alertes_eau_fortes';
+  static const _eveningId = 800000;
   static const _blue = Color(0xFF1CB0F6);
   static const _green = Color(0xFF58CC02);
 
@@ -54,14 +71,27 @@ class AwesomeReminderScheduler implements ReminderScheduler {
         NotificationChannel(
           channelKey: channelKey,
           channelName: 'Alertes pour boire',
-          channelDescription: 'Sonne aux heures où tu dois boire',
+          channelDescription: 'Son doux aux heures où tu dois boire',
           importance: NotificationImportance.High,
           defaultColor: _blue,
           ledColor: _blue,
           playSound: true,
           enableVibration: true,
-          vibrationPattern: Int64List.fromList([0, 500, 250, 500]),
+          vibrationPattern: Int64List.fromList([0, 400, 200, 400]),
           defaultRingtoneType: DefaultRingtoneType.Notification,
+        ),
+        NotificationChannel(
+          channelKey: loudChannelKey,
+          channelName: 'Alertes fortes (réveil)',
+          channelDescription:
+              'Sonne comme un réveil aux heures où tu dois boire',
+          importance: NotificationImportance.Max,
+          defaultColor: _blue,
+          ledColor: _blue,
+          playSound: true,
+          enableVibration: true,
+          vibrationPattern: Int64List.fromList([0, 600, 300, 600, 300, 600]),
+          defaultRingtoneType: DefaultRingtoneType.Alarm,
         ),
       ],
       languageCode: 'fr',
@@ -95,7 +125,11 @@ class AwesomeReminderScheduler implements ReminderScheduler {
   /// sous la limite de 64 alertes programmées d'iOS), pour varier les
   /// conseils et les images.
   @override
-  Future<void> scheduleAll(HydrationPlan plan, UserProfile? profile) async {
+  Future<void> scheduleAll(
+    HydrationPlan plan,
+    UserProfile? profile, {
+    bool loud = false,
+  }) async {
     await _notifications.cancelAllSchedules();
     final timeZone = await _notifications.getLocalTimeZoneIdentifier();
     for (var weekday = DateTime.monday; weekday <= DateTime.sunday; weekday++) {
@@ -106,7 +140,9 @@ class AwesomeReminderScheduler implements ReminderScheduler {
             id: weekday * 10000 + reminder.minutes,
             reminder: reminder,
             profile: profile,
-            tip: kidneyTips[tipIndexFor(weekday, i)],
+            weekday: weekday,
+            slot: i,
+            loud: loud,
           ),
           actionButtons: alertButtons,
           schedule: NotificationCalendar(
@@ -126,16 +162,54 @@ class AwesomeReminderScheduler implements ReminderScheduler {
   }
 
   @override
-  Future<void> showTest(Reminder reminder, UserProfile? profile) =>
+  Future<void> showTest(
+    Reminder reminder,
+    UserProfile? profile, {
+    bool loud = false,
+  }) =>
       _notifications.createNotification(
         content: alertContent(
           id: 1,
           reminder: reminder,
           profile: profile,
-          tip: kidneyTips[tipIndexFor(DateTime.now().weekday, 0)],
+          weekday: DateTime.now().weekday,
+          slot: 0,
+          loud: loud,
         ),
         actionButtons: alertButtons,
       );
+
+  @override
+  Future<void> scheduleEveningRescue(DateTime? at, AlertMessage? message) =>
+      eveningRescue(at, message);
+
+  /// Aussi appelé depuis l'arrière-plan, après « J'ai bu ✓ ».
+  static Future<void> eveningRescue(
+    DateTime? at,
+    AlertMessage? message,
+  ) async {
+    final notifications = AwesomeNotifications();
+    await notifications.cancel(_eveningId);
+    if (at == null || message == null) return;
+    await notifications.createNotification(
+      content: NotificationContent(
+        id: _eveningId,
+        channelKey: channelKey,
+        title: message.title,
+        body: message.body,
+        bigPicture: 'asset://assets/notif/mascot_sad.png',
+        largeIcon: 'asset://assets/notif/reno_face.png',
+        notificationLayout: NotificationLayout.BigPicture,
+        category: NotificationCategory.Reminder,
+        color: _blue,
+      ),
+      schedule: NotificationCalendar.fromDate(
+        date: at,
+        allowWhileIdle: true,
+        preciseAlarm: true,
+      ),
+    );
+  }
 
   @override
   Future<void> cancelAll() => _notifications.cancelAll();
@@ -146,7 +220,7 @@ class AwesomeReminderScheduler implements ReminderScheduler {
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: 900000 + (int.tryParse(minutes ?? '') ?? 0),
-        channelKey: channelKey,
+        channelKey: action.channelKey ?? channelKey,
         title: action.title,
         body: action.body,
         bigPicture: action.bigPicture,
@@ -184,22 +258,33 @@ class AwesomeReminderScheduler implements ReminderScheduler {
     required int id,
     required Reminder reminder,
     required UserProfile? profile,
-    required KidneyTip tip,
-  }) =>
-      NotificationContent(
-        id: id,
-        channelKey: channelKey,
-        title: alertTitle(profile),
-        body: '${alertBody(reminder)}\n${tip.short}',
-        summary: 'Alerte de ${reminder.time}',
-        bigPicture: notificationImage(tip.asset),
-        largeIcon: 'asset://assets/notif/reno_face.png',
-        notificationLayout: NotificationLayout.BigPicture,
-        category: NotificationCategory.Reminder,
-        color: _blue,
-        wakeUpScreen: true,
-        payload: {'minutes': '${reminder.minutes}'},
-      );
+    required int weekday,
+    required int slot,
+    bool loud = false,
+  }) {
+    final tip = kidneyTips[tipIndexFor(weekday, slot)];
+    final message = alertMessage(
+      firstName: profile?.firstName,
+      reminder: reminder,
+      weekday: weekday,
+      slot: slot,
+    );
+    return NotificationContent(
+      id: id,
+      channelKey: loud ? loudChannelKey : channelKey,
+      title: message.title,
+      body: '${message.body}\n${tip.short}',
+      summary: 'Alerte de ${reminder.time}',
+      bigPicture: notificationImage(tip.asset),
+      largeIcon: 'asset://assets/notif/reno_face.png',
+      notificationLayout: NotificationLayout.BigPicture,
+      category:
+          loud ? NotificationCategory.Alarm : NotificationCategory.Reminder,
+      color: _blue,
+      wakeUpScreen: true,
+      payload: {'minutes': '${reminder.minutes}'},
+    );
+  }
 }
 
 /// « assets/illustrations/kidney_stones.svg » → sa version PNG pour la
