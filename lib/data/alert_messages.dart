@@ -63,7 +63,7 @@ AlertMessage eveningRescueMessage({
     streak > 0
         ? '🔥 Ta flamme de $streak jour${streak > 1 ? 's' : ''} est en danger !'
         : '🔥 ${name.isEmpty ? 'Allume' : '$name, allume'} ta flamme ce soir !',
-    'Coche encore $alerts avant minuit. ${kidneyTips.last.short}',
+    'Coche encore $alerts avant minuit. ${healthyKidneysTip.short}',
     // Reno pleure : la flamme va s'éteindre.
     mood: 0,
   );
