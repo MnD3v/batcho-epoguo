@@ -6,6 +6,7 @@ import '../hydration_controller.dart';
 import '../models/plan.dart';
 import '../theme/duo.dart';
 import '../widgets/duo_widgets.dart';
+import '../widgets/evolution_chart.dart';
 import 'onboarding_screen.dart';
 
 /// Statistiques et réglages des alertes.
@@ -97,6 +98,8 @@ class ProfileScreen extends StatelessWidget {
                 '${controller.bestStreak > 1 ? 's' : ''}',
                 style: Duo.body.copyWith(fontSize: 14),
               ),
+              const SizedBox(height: 24),
+              EvolutionSection(controller: controller),
               const SizedBox(height: 24),
               const Text('MES ALERTES', style: Duo.label),
               const SizedBox(height: 10),

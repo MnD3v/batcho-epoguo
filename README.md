@@ -19,6 +19,8 @@ et **Reno**, le rein mascotte, qui guide et encourage.
   l'alerte, les oubliées peuvent être rattrapées, les suivantes sont verrouillées.
 - **XP et niveaux** : +10 XP par alerte cochée, +30 XP pour une journée parfaite, +5 XP par leçon lue.
 - **Flamme** : jours d'affilée avec au moins 70 % des alertes cochées.
+- **Mon évolution** (onglet Profil) : courbe du mois (litres bus chaque jour) et de l'année
+  (moyenne par jour, mois par mois), avec l'objectif en pointillés ; toucher la courbe pour lire une valeur.
 - **Badges**, **leçons illustrées** sur les reins et **profil** (statistiques, modifier ses alertes).
 
 Les données restent sur le téléphone (`shared_preferences`), rien n'est envoyé en ligne.

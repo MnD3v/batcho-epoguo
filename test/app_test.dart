@@ -145,6 +145,11 @@ void main() {
     expect(find.text('Awa'), findsOneWidget);
     expect(find.text('awa@exemple.com'), findsOneWidget);
 
+    await tap(tester, text('ANNÉE'));
+    expect(find.text('Moyenne par jour, sur 12 mois'), findsOneWidget);
+    await tap(tester, text('MOIS'));
+    expect(find.text('Litres bus par jour, sur 30 jours'), findsOneWidget);
+
     await tap(tester, text('MODIFIER MES ALERTES'));
     await tap(tester, text('Toutes les 3 heures'));
     await tap(tester, text('CONTINUER'));

@@ -72,6 +72,7 @@ class HydrationStore {
   static const _bestStreakKey = 'stats_best_streak';
   static const _readTipsKey = 'stats_read_tips';
   static const _badgesKey = 'stats_badges';
+  static const _firstDayKey = 'first_day';
 
   UserProfile? get profile {
     final firstName = _prefs.getString(_firstNameKey);
@@ -90,6 +91,20 @@ class HydrationStore {
       },
     );
   }
+
+  /// Premier jour d'utilisation : les courbes ne montrent rien avant.
+  DateTime? get firstDay {
+    final text = _prefs.getString(_firstDayKey);
+    return text == null ? null : DateTime.tryParse(text);
+  }
+
+  Future<void> markFirstDay(DateTime day) async {
+    if (firstDay != null) return;
+    await _prefs.setString(_firstDayKey, _checksKey(day).substring(7));
+  }
+
+  /// Total bu un jour donné, en millilitres.
+  int drunkMl(DateTime day) => checks(day).values.fold(0, (a, b) => a + b);
 
   Future<void> saveProfile(UserProfile profile) async {
     await _prefs.setString(_firstNameKey, profile.firstName);

@@ -84,4 +84,35 @@ void main() {
     await c.toggle(c.reminders[0]);
     expect(c.slotState(0), SlotState.done);
   });
+
+  test('courbes : litres par jour et moyenne par mois', () async {
+    SharedPreferences.setMockInitialValues({
+      ...setUpPrefs,
+      'first_day': '2026-08-30',
+      'checks_2026-08-30': ['420:250', '540:250'], // 0,5 L
+      'checks_2026-08-31': ['420:250'], // 0,25 L
+      'checks_2026-09-26': ['420:250', '540:250', '660:250', '780:250'], // 1 L
+    });
+    final c = HydrationController(
+      store: await HydrationStore.load(),
+      scheduler: FakeScheduler(),
+      clock: () => DateTime(2026, 9, 27, 21),
+    );
+
+    final days = c.lastDays(30);
+    expect(days.length, 30);
+    expect(days.last.date, DateTime(2026, 9, 27));
+    expect(days.last.liters, 0);
+    expect(days[28].liters, 1); // 26 septembre
+    expect(days.first.date, DateTime(2026, 8, 29));
+    expect(days.first.liters, isNull); // avant le premier jour
+    expect(days[1].liters, 0.5);
+
+    final months = c.lastMonths(12);
+    expect(months.length, 12);
+    expect(months.last.date, DateTime(2026, 9));
+    expect(months.last.liters, closeTo(1 / 26, 1e-9)); // 1 L sur 26 jours finis
+    expect(months[10].liters, closeTo(0.75 / 2, 1e-9)); // août : 2 jours
+    expect(months.first.liters, isNull);
+  });
 }

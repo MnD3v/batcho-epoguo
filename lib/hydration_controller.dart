@@ -9,6 +9,15 @@ import 'services/reminder_scheduler.dart';
 
 enum SlotState { done, current, missed, locked }
 
+/// Un point des courbes d'évolution ; [liters] est nul avant le premier jour
+/// d'utilisation.
+class ChartPoint {
+  const ChartPoint(this.date, this.liters);
+
+  final DateTime date;
+  final double? liters;
+}
+
 /// État de l'appli : le profil, les alertes, ce qui est coché aujourd'hui et
 /// la progression du jeu (XP, niveau, flamme, badges).
 class HydrationController extends ChangeNotifier {
@@ -22,6 +31,7 @@ class HydrationController extends ChangeNotifier {
     _plan = store.plan;
     _stats = store.stats;
     _loadDay();
+    if (isSetUp) store.markFirstDay(_day);
   }
 
   final HydrationStore _store;
@@ -75,6 +85,43 @@ class HydrationController extends ChangeNotifier {
     return m >= r.minutes ? SlotState.missed : SlotState.locked;
   }
 
+  /// Litres bus chaque jour, des [count] derniers jours jusqu'à aujourd'hui.
+  List<ChartPoint> lastDays(int count) {
+    final start = _store.firstDay ?? _day;
+    return [
+      for (var i = count - 1; i >= 0; i--)
+        _dayPoint(DateTime(_day.year, _day.month, _day.day - i), start),
+    ];
+  }
+
+  ChartPoint _dayPoint(DateTime day, DateTime start) => ChartPoint(
+        day,
+        day.isBefore(start) ? null : _store.drunkMl(day) / 1000,
+      );
+
+  /// Moyenne de litres bus par jour, pour chacun des [count] derniers mois
+  /// jusqu'au mois en cours (jours d'utilisation terminés seulement).
+  List<ChartPoint> lastMonths(int count) {
+    final start = _store.firstDay ?? _day;
+    return [
+      for (var i = count - 1; i >= 0; i--)
+        _monthPoint(DateTime(_day.year, _day.month - i), start),
+    ];
+  }
+
+  ChartPoint _monthPoint(DateTime month, DateTime start) {
+    var total = 0;
+    var days = 0;
+    for (var d = month;
+        d.month == month.month && d.isBefore(_day);
+        d = DateTime(d.year, d.month, d.day + 1)) {
+      if (d.isBefore(start)) continue;
+      total += _store.drunkMl(d);
+      days++;
+    }
+    return ChartPoint(month, days == 0 ? null : total / days / 1000);
+  }
+
   /// Change de jour si minuit est passé depuis le dernier affichage.
   void refreshDay() {
     final today = _today();
@@ -89,6 +136,7 @@ class HydrationController extends ChangeNotifier {
     _profile = profile;
     notifyListeners();
     await _store.saveProfile(profile);
+    await _store.markFirstDay(_day);
   }
 
   /// Enregistre les alertes et les programme sur le téléphone.
